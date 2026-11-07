@@ -150,10 +150,82 @@ export const authController = {
     userData: Record<string, unknown>,
   ): Promise<AuthResponse> => {
     try {
+      const requestedRole = String(userData.role || userData.rol || "inquilino")
+        .trim()
+        .toLowerCase();
+
+      if (requestedRole === "administrador" || requestedRole === "admin") {
+        return {
+          success: false,
+          message:
+            "No está permitido registrar cuentas de administrador en la aplicación móvil.",
+        };
+      }
+
+      const isHost =
+        requestedRole === "arrendatario" ||
+        requestedRole === "host" ||
+        requestedRole === "anfitrion" ||
+        requestedRole === "anfitrión";
+
+      // IMPORTANTE: En server/index.js (POST /api/auth/register), el backend evalúa:
+      // `const role = req.body?.role === "host" ? "arrendatario" : "inquilino";`
+      // Por ello debemos enviar "host" para arrendatario y "guest" para inquilino.
+      const backendRegisterRole = isHost ? "host" : "guest";
+      const normalizedRole = isHost ? "arrendatario" : "inquilino";
+
+      const cleanName = String(
+        userData.nombre || userData.name || "",
+      ).trim();
+      const cleanEmail = String(
+        userData.correo || userData.email || "",
+      )
+        .trim()
+        .toLowerCase();
+      const cleanPhone = String(
+        userData.telefono || userData.phone || "",
+      ).trim();
+      const rawPassword = String(
+        userData.contrasena || userData.password || "",
+      );
+
+      const payload = {
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: rawPassword,
+        confirmPassword: String(userData.confirmPassword || rawPassword),
+        role: backendRegisterRole,
+        rol: normalizedRole,
+      };
+
       const response = (await authService.registerUser(
-        userData,
+        payload,
       )) as AuthResponse;
-      return response || { success: false, message: "Error en el registro." };
+
+      if (!response) {
+        return {
+          success: false,
+          message: "No se recibió respuesta del servidor.",
+        };
+      }
+
+      if (esCuentaAdministrador(response)) {
+        return {
+          success: false,
+          message:
+            "El registro de administrador no está permitido en la versión móvil.",
+        };
+      }
+
+      const isSuccess =
+        response.success === true ||
+        Boolean(response.user || response.usuario || response.data);
+
+      return {
+        ...response,
+        success: response.success === false ? false : isSuccess,
+      };
     } catch (error: unknown) {
       return {
         success: false,

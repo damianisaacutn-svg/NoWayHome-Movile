@@ -293,7 +293,7 @@ export default function HomePage(): ReactElement {
   };
 
   const handleNavigateRegister = (): void => {
-    router.push("/registerpage" as Href);
+    router.push("/registerPage" as Href);
   };
 
   if (isLoading) {

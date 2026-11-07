@@ -98,7 +98,7 @@ export function Header() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => handleNavigation("/registerpage")}
+                  onPress={() => handleNavigation("/registerPage")}
                   className="bg-[#6B8E23] px-4 py-2 rounded-xl items-center justify-center"
                 >
                   <Text className="text-white font-medium">Registrarse</Text>
@@ -190,7 +190,7 @@ export function Header() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => handleNavigation("/registerpage")}
+                    onPress={() => handleNavigation("/registerPage")}
                     className="bg-[#6B8E23] h-12 rounded-xl items-center justify-center mt-2 w-full"
                   >
                     <Text className="text-white font-medium text-base">

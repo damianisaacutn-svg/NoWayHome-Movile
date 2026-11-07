@@ -473,7 +473,7 @@ export default function LoginPage() {
               <View className="flex-row items-center">
                 <Text className="text-[#5F5F5F]">¿No tienes cuenta? </Text>
                 <TouchableOpacity
-                  onPress={() => router.push("/registerpage" as any)}
+                  onPress={() => router.push("/registerPage" as any)}
                 >
                   <Text className="text-[#6B8E23] font-medium">
                     Regístrate aquí
