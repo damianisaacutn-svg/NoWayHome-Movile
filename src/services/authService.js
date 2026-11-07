@@ -14,7 +14,10 @@ import { API_URL } from "../config/api";
 const SESSION_STORAGE_KEY = "nowayhome_session";
 const LEGACY_WEB_KEYS = ["user", "usuario", "token", "authToken", "role"];
 
-function getWebStorage() {
+// Almacenamiento en memoria para sesiones en dispositivos nativos sin localStorage
+const memoryKVStore = new Map();
+
+function getStorageAdapter() {
   try {
     if (
       typeof globalThis !== "undefined" &&
@@ -26,7 +29,11 @@ function getWebStorage() {
   } catch {
     // Ignorar entornos nativos donde localStorage no está habilitado
   }
-  return null;
+  return {
+    getItem: (key) => (memoryKVStore.has(key) ? memoryKVStore.get(key) : null),
+    setItem: (key, value) => memoryKVStore.set(key, String(value)),
+    removeItem: (key) => memoryKVStore.delete(key),
+  };
 }
 
 function createEmptySession() {
@@ -39,7 +46,7 @@ function createEmptySession() {
 }
 
 function loadInitialSession() {
-  const storage = getWebStorage();
+  const storage = getStorageAdapter();
   if (!storage) {
     return createEmptySession();
   }
@@ -83,6 +90,7 @@ async function postJson(path, body) {
   const response = await fetch(`${API_URL}${path}`, {
     method: "POST",
     headers: {
+      Accept: "application/json",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -93,7 +101,10 @@ async function postJson(path, body) {
   if (!response.ok) {
     return {
       success: false,
-      message: data.message || "No se pudo completar la solicitud.",
+      message:
+        data.message ||
+        data.error ||
+        `No se pudo completar la solicitud (HTTP ${response.status}).`,
     };
   }
 
@@ -144,7 +155,7 @@ class AuthService {
       role: resolvedRole,
     };
 
-    const storage = getWebStorage();
+    const storage = getStorageAdapter();
     if (storage) {
       try {
         storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(this._session));
@@ -159,7 +170,7 @@ class AuthService {
   logout() {
     this._session = createEmptySession();
 
-    const storage = getWebStorage();
+    const storage = getStorageAdapter();
     if (storage) {
       try {
         storage.removeItem(SESSION_STORAGE_KEY);
@@ -172,6 +183,38 @@ class AuthService {
     }
 
     this._notifyListeners();
+  }
+
+  // Utilidades para guardar/leer claves auxiliares (ej. pending_2fa, last_registered_user)
+  getStorageItem(key) {
+    try {
+      const storage = getStorageAdapter();
+      return storage ? storage.getItem(key) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  setStorageItem(key, value) {
+    try {
+      const storage = getStorageAdapter();
+      if (storage) {
+        storage.setItem(key, String(value));
+      }
+    } catch {
+      // Ignorar errores de almacenamiento
+    }
+  }
+
+  removeStorageItem(key) {
+    try {
+      const storage = getStorageAdapter();
+      if (storage) {
+        storage.removeItem(key);
+      }
+    } catch {
+      // Ignorar errores de almacenamiento
+    }
   }
 
   /**

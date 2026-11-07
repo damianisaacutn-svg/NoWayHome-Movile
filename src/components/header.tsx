@@ -1,13 +1,22 @@
 import { usePathname, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 // Usamos lucide-react-native para móviles
-import { Home, LogIn, Menu, User, X } from "lucide-react-native";
+import { Home, LogIn, LogOut, Menu, User, X } from "lucide-react-native";
+import { authService } from "../services/authService";
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [session, setSession] = useState(() => authService.getSession());
+
+  useEffect(() => {
+    const unsubscribe = authService.subscribe((nextSession) => {
+      setSession(nextSession);
+    });
+    return unsubscribe;
+  }, []);
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -18,8 +27,15 @@ export function Header() {
     setIsMobileMenuOpen(false);
   };
 
-  // Estado del header general (para vistas públicas como index, loginpage y registerpage)
-  const isAuthenticated = false;
+  const handleLogout = () => {
+    authService.logout();
+    setIsMobileMenuOpen(false);
+    router.replace("/loginPage" as any);
+  };
+
+  const isAuthenticated = Boolean(session?.isAuthenticated);
+  const isLoginRoute =
+    pathname === "/loginPage" || pathname === "/loginpage";
 
   return (
     <View className="bg-white border-b border-[#6B8E23]/10 z-50">
@@ -40,45 +56,39 @@ export function Header() {
           {/* Desktop Navigation (Oculto o adaptado para pantallas grandes / tablets) */}
           <View className="hidden md:flex flex-row items-center gap-6">
             {isAuthenticated ? (
-              <TouchableOpacity
-                onPress={() => handleNavigation("/inquilino/ProfileInquilino")}
-                className={`flex-row items-center gap-2 ${
-                  pathname === "/inquilino/ProfileInquilino"
-                    ? "border-b-2 border-[#6B8E23]"
-                    : ""
-                }`}
-              >
-                <User
-                  color={
-                    pathname === "/inquilino/ProfileInquilino"
-                      ? "#6B8E23"
-                      : "#5F5F5F"
-                  }
-                  size={20}
-                />
-                <Text
-                  className={
-                    pathname === "/inquilino/ProfileInquilino"
-                      ? "text-[#6B8E23] font-medium"
-                      : "text-[#5F5F5F]"
-                  }
+              <>
+                <TouchableOpacity
+                  onPress={() => handleNavigation("/")}
+                  className="flex-row items-center gap-2"
                 >
-                  Perfil
-                </Text>
-              </TouchableOpacity>
+                  <User color="#6B8E23" size={20} />
+                  <Text className="text-[#6B8E23] font-medium">
+                    {(session?.user as any)?.nombre ||
+                      (session?.user as any)?.correo ||
+                      "Mi Cuenta"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleLogout}
+                  className="flex-row items-center gap-1.5 py-2"
+                >
+                  <LogOut color="#DC2626" size={18} />
+                  <Text className="text-red-600 font-medium">Salir</Text>
+                </TouchableOpacity>
+              </>
             ) : (
               <>
                 <TouchableOpacity
-                  onPress={() => handleNavigation("/loginpage")}
+                  onPress={() => handleNavigation("/loginPage")}
                   className="flex-row items-center gap-2 py-2"
                 >
                   <LogIn
-                    color={pathname === "/loginpage" ? "#6B8E23" : "#5F5F5F"}
+                    color={isLoginRoute ? "#6B8E23" : "#5F5F5F"}
                     size={20}
                   />
                   <Text
                     className={
-                      pathname === "/loginpage"
+                      isLoginRoute
                         ? "text-[#6B8E23] font-medium"
                         : "text-[#5F5F5F]"
                     }
@@ -135,43 +145,42 @@ export function Header() {
               </TouchableOpacity>
 
               {isAuthenticated ? (
-                <TouchableOpacity
-                  onPress={() =>
-                    handleNavigation("/inquilino/ProfileInquilino")
-                  }
-                  className="flex-row items-center gap-2 py-2"
-                >
-                  <User
-                    color={
-                      pathname === "/inquilino/ProfileInquilino"
-                        ? "#6B8E23"
-                        : "#5F5F5F"
-                    }
-                    size={20}
-                  />
-                  <Text
-                    className={`text-base ${
-                      pathname === "/inquilino/ProfileInquilino"
-                        ? "text-[#6B8E23] font-medium"
-                        : "text-[#5F5F5F]"
-                    }`}
+                <>
+                  <TouchableOpacity
+                    onPress={() => handleNavigation("/")}
+                    className="flex-row items-center gap-2 py-2"
                   >
-                    Perfil
-                  </Text>
-                </TouchableOpacity>
+                    <User color="#6B8E23" size={20} />
+                    <Text className="text-base text-[#6B8E23] font-medium">
+                      {(session?.user as any)?.nombre ||
+                        (session?.user as any)?.correo ||
+                        "Mi Perfil"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    className="flex-row items-center gap-2 py-2"
+                  >
+                    <LogOut color="#DC2626" size={20} />
+                    <Text className="text-base text-red-600 font-medium">
+                      Cerrar Sesión
+                    </Text>
+                  </TouchableOpacity>
+                </>
               ) : (
                 <>
                   <TouchableOpacity
-                    onPress={() => handleNavigation("/loginpage")}
+                    onPress={() => handleNavigation("/loginPage")}
                     className="flex-row items-center gap-2 py-2"
                   >
                     <LogIn
-                      color={pathname === "/loginpage" ? "#6B8E23" : "#5F5F5F"}
+                      color={isLoginRoute ? "#6B8E23" : "#5F5F5F"}
                       size={20}
                     />
                     <Text
                       className={`text-base ${
-                        pathname === "/loginpage"
+                        isLoginRoute
                           ? "text-[#6B8E23] font-medium"
                           : "text-[#5F5F5F]"
                       }`}
