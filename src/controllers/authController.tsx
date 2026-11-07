@@ -237,6 +237,92 @@ export const authController = {
     }
   },
 
+  updatePassword: async (data: {
+    userId?: number | string;
+    role?: string;
+    password?: string;
+    confirmPassword?: string;
+  }): Promise<AuthResponse> => {
+    const { userId, role, password, confirmPassword } = data;
+
+    if (!password || !confirmPassword) {
+      return {
+        success: false,
+        message: "Debes completar ambos campos de contraseña.",
+      };
+    }
+
+    if (password.length < 6) {
+      return {
+        success: false,
+        message: "La contraseña debe tener al menos 6 caracteres.",
+      };
+    }
+
+    if (password !== confirmPassword) {
+      return {
+        success: false,
+        message: "Las contraseñas no coinciden.",
+      };
+    }
+
+    const rawRole = String(role || "")
+      .trim()
+      .toLowerCase();
+
+    if (rawRole === "administrador" || rawRole === "admin") {
+      return {
+        success: false,
+        message:
+          "El cambio de contraseña de administrador solo está disponible en la versión web.",
+      };
+    }
+
+    const normalizedRole =
+      rawRole === "arrendatario" ||
+      rawRole === "host" ||
+      rawRole === "anfitrion" ||
+      rawRole === "anfitrión"
+        ? "arrendatario"
+        : "inquilino";
+
+    if (!userId) {
+      return {
+        success: false,
+        message:
+          "No se pudo identificar al usuario. Por favor inicia sesión nuevamente.",
+      };
+    }
+
+    try {
+      const response = (await authService.updatePassword({
+        userId,
+        role: normalizedRole,
+        newPassword: password,
+      })) as AuthResponse;
+
+      if (!response) {
+        return {
+          success: false,
+          message: "No se pudo actualizar la contraseña.",
+        };
+      }
+
+      return {
+        ...response,
+        success: Boolean(response.success),
+      };
+    } catch (error: unknown) {
+      return {
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Ocurrió un error inesperado al actualizar la contraseña.",
+      };
+    }
+  },
+
   logout: (): void => {
     authService.logout();
   },

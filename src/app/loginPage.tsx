@@ -378,7 +378,7 @@ export default function LoginPage() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    onPress={() => router.push("/forgot-password" as any)}
+                    onPress={() => router.push("/forgotPassword" as any)}
                     className="flex-row items-center py-1.5 px-2.5 rounded-lg bg-[#6B8E23]/10"
                   >
                     <Key color="#6B8E23" size={14} />
