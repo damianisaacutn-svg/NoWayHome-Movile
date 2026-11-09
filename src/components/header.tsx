@@ -34,6 +34,12 @@ export function Header() {
   };
 
   const isAuthenticated = Boolean(session?.isAuthenticated);
+  const isArrendatario =
+    session?.role === "arrendatario" ||
+    (session?.user as any)?.role === "arrendatario" ||
+    (session?.user as any)?.rol === "arrendatario" ||
+    Boolean((session?.user as any)?.id_arrendatario);
+  const profileRoute = isArrendatario ? "/arrendatario/profileArrendatario" : "/";
   const isLoginRoute =
     pathname === "/loginPage" || pathname === "/loginpage";
 
@@ -58,7 +64,7 @@ export function Header() {
             {isAuthenticated ? (
               <>
                 <TouchableOpacity
-                  onPress={() => handleNavigation("/")}
+                  onPress={() => handleNavigation(profileRoute)}
                   className="flex-row items-center gap-2"
                 >
                   <User color="#6B8E23" size={20} />
@@ -147,7 +153,7 @@ export function Header() {
               {isAuthenticated ? (
                 <>
                   <TouchableOpacity
-                    onPress={() => handleNavigation("/")}
+                    onPress={() => handleNavigation(profileRoute)}
                     className="flex-row items-center gap-2 py-2"
                   >
                     <User color="#6B8E23" size={20} />

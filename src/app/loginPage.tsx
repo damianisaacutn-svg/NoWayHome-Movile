@@ -36,10 +36,17 @@ function detectarRolUsuario(
   resultOrUser: any,
   fallbackRole = "",
 ): "inquilino" | "arrendatario" {
-  const userObj = resultOrUser?.user || resultOrUser?.usuario || resultOrUser || {};
+  const userObj =
+    resultOrUser?.user ||
+    resultOrUser?.usuario ||
+    resultOrUser?.data ||
+    resultOrUser?.profile ||
+    resultOrUser ||
+    {};
   const rawRole = String(
     resultOrUser?.role ||
       resultOrUser?.rol ||
+      resultOrUser?.tipo ||
       userObj?.role ||
       userObj?.rol ||
       userObj?.tipo ||
@@ -51,10 +58,12 @@ function detectarRolUsuario(
 
   if (
     rawRole === "arrendatario" ||
+    rawRole === "arrendador" ||
     rawRole === "host" ||
     rawRole === "anfitrion" ||
     rawRole === "anfitrión" ||
-    Boolean(userObj?.id_arrendatario)
+    Boolean(userObj?.id_arrendatario) ||
+    Boolean(resultOrUser?.id_arrendatario)
   ) {
     return "arrendatario";
   }
@@ -126,7 +135,7 @@ export default function LoginPage() {
   // ==========================================================================
   const redirectByRole = (role: "inquilino" | "arrendatario") => {
     if (role === "arrendatario") {
-      router.replace("/" as any);
+      router.replace("/arrendatario/profileArrendatario" as any);
       return;
     }
 
@@ -152,7 +161,12 @@ export default function LoginPage() {
     );
 
     const rawUser =
-      resultPayload?.user || resultPayload?.usuario || resultPayload || {};
+      resultPayload?.user ||
+      resultPayload?.usuario ||
+      resultPayload?.data ||
+      resultPayload?.profile ||
+      resultPayload ||
+      {};
 
     const normalizedUser = {
       ...matchingRegistered,
@@ -161,11 +175,14 @@ export default function LoginPage() {
         rawUser.id ??
         rawUser.id_inquilino ??
         rawUser.id_arrendatario ??
+        resultPayload?.id ??
         matchingRegistered?.id,
       id_inquilino:
         resolvedRole === "inquilino"
           ? (rawUser.id_inquilino ??
             rawUser.id ??
+            resultPayload?.id_inquilino ??
+            resultPayload?.id ??
             matchingRegistered?.id_inquilino ??
             matchingRegistered?.id)
           : rawUser.id_inquilino,
@@ -173,7 +190,10 @@ export default function LoginPage() {
         resolvedRole === "arrendatario"
           ? (rawUser.id_arrendatario ??
             rawUser.id ??
-            matchingRegistered?.id_arrendatario)
+            resultPayload?.id_arrendatario ??
+            resultPayload?.id ??
+            matchingRegistered?.id_arrendatario ??
+            matchingRegistered?.id)
           : rawUser.id_arrendatario,
       nombre:
         rawUser.nombre ||
