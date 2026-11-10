@@ -30,7 +30,7 @@ export function Header() {
   const handleLogout = () => {
     authService.logout();
     setIsMobileMenuOpen(false);
-    router.replace("/loginPage" as any);
+    router.replace("/" as any);
   };
 
   const isAuthenticated = Boolean(session?.isAuthenticated);

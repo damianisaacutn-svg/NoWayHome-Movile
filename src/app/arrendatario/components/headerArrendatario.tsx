@@ -12,7 +12,7 @@ export function HeaderArrendatario() {
 
   const handleLogout = () => {
     authService.logout();
-    router.replace("/loginPage" as any);
+    router.replace("/" as any);
   };
 
   return (

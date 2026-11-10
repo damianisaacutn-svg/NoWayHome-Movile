@@ -426,12 +426,18 @@ export function PerfilArrendatario({
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
+      if (!nextSession?.isAuthenticated) {
+        setSessionUser(null);
+        setFetchedProfile(null);
+        router.replace("/" as any);
+        return;
+      }
       if (nextSession?.user) {
         setSessionUser(nextSession.user as LandlordProfileData);
       }
     });
     return unsubscribe;
-  }, []);
+  }, [router]);
 
   const idArrendatario = useMemo(() => {
     return (
@@ -461,6 +467,9 @@ export function PerfilArrendatario({
   const syncUserInSession = useCallback(
     (nextProfileData: LandlordProfileData) => {
       const currentSession = authService.getSession();
+      if (!currentSession?.isAuthenticated) {
+        return;
+      }
       const currentUser =
         (currentSession?.user as LandlordProfileData) ||
         getStoredSessionUser() ||

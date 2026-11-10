@@ -599,12 +599,18 @@ export function ProfilePage() {
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
+      if (!nextSession?.isAuthenticated) {
+        setSessionUser(null);
+        setFetchedProfile(null);
+        router.replace("/" as any);
+        return;
+      }
       if (nextSession?.user) {
         setSessionUser(nextSession.user as TenantProfileData);
       }
     });
     return unsubscribe;
-  }, []);
+  }, [router]);
 
   const userId = useMemo(() => {
     return (
@@ -617,6 +623,9 @@ export function ProfilePage() {
 
   const syncUserInSession = useCallback((nextUserData: TenantProfileData) => {
     const currentSession = authService.getSession();
+    if (!currentSession?.isAuthenticated) {
+      return;
+    }
     const currentUser =
       (currentSession?.user as TenantProfileData) ||
       getStoredSessionUser() ||
@@ -782,11 +791,6 @@ export function ProfilePage() {
       Alert.alert("Error", message);
     }
   };
-
-  const reservasPorPropiedadId = useMemo(
-    () => new Map(reservas.map((reserva) => [reserva.id_propiedad, reserva])),
-    [reservas],
-  );
 
   if (isLoading && !userData?.nombre && !userData?.correo) {
     return (
@@ -1061,7 +1065,7 @@ export function ProfilePage() {
                 Próximas Reservas
               </Text>
               <TouchableOpacity
-                onPress={() => router.push("/" as any)}
+                onPress={() => router.push("/inquilino/ExplorarPage" as any)}
                 className="bg-[#6B8E23] rounded-xl py-3 px-6 w-full items-center"
               >
                 <Text className="text-white font-medium">Nueva Reserva</Text>
@@ -1142,18 +1146,19 @@ export function ProfilePage() {
 
                           <View className="flex-row gap-2 w-full mt-2">
                             <TouchableOpacity
-                              onPress={() =>
-                                Alert.alert(
-                                  "Detalles de reserva",
-                                  `${getBookingTitle(booking)}\n${formatDateLong(
-                                    getBookingStartDate(booking),
-                                  )} al ${formatDateLong(
-                                    getBookingEndDate(booking),
-                                  )}\nTotal: ${formatPrice(
-                                    getBookingTotal(booking),
-                                  )}`,
-                                )
-                              }
+                              onPress={() => {
+                                const targetId =
+                                  booking.id_reserva ||
+                                  booking.id_navegacion ||
+                                  booking.id;
+                                if (targetId) {
+                                  router.push({
+                                    pathname:
+                                      "/inquilino/detallesReservaPage" as any,
+                                    params: { idReserva: String(targetId) },
+                                  });
+                                }
+                              }}
                               className="flex-1 border-2 border-[#6B8E23] rounded-xl py-2.5 items-center"
                             >
                               <Text className="text-[#6B8E23] font-medium">
@@ -1206,9 +1211,10 @@ export function ProfilePage() {
             ) : (
               <View className="flex-col gap-4">
                 {favoritos.map((favorite, favIndex) => {
-                  const propiedadId = favorite.propiedad?.id_propiedad;
-                  const reservaAsociada =
-                    reservasPorPropiedadId.get(propiedadId);
+                  const propiedadId =
+                    favorite.propiedad?.id_propiedad ??
+                    favorite.id_propiedad ??
+                    favorite.propiedad?.id;
 
                   return (
                     <View
@@ -1255,13 +1261,14 @@ export function ProfilePage() {
 
                           <TouchableOpacity
                             onPress={() => {
-                              if (reservaAsociada) {
-                                Alert.alert(
-                                  getFavoriteTitle(favorite),
-                                  `Ubicación: ${getFavoriteLocation(favorite)}`,
-                                );
+                              if (propiedadId) {
+                                router.push({
+                                  pathname:
+                                    "/inquilino/detallesPropiedadPage" as any,
+                                  params: { id: String(propiedadId) },
+                                });
                               } else {
-                                router.push("/" as any);
+                                router.push("/inquilino/ExplorarPage" as any);
                               }
                             }}
                             disabled={!propiedadId}
@@ -1311,7 +1318,7 @@ export function ProfilePage() {
               </View>
 
               <TouchableOpacity
-                onPress={() => router.push("/" as any)}
+                onPress={() => router.push("/inquilino/ExplorarPage" as any)}
                 className="border-2 border-[#6B8E23] rounded-xl py-3 px-4 w-full items-center"
               >
                 <Text className="text-[#6B8E23] font-medium">

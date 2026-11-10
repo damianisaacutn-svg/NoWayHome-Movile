@@ -7,7 +7,7 @@ import { authService } from "@/services/authService";
 const NAV_ITEMS = [
   {
     label: "Explorar",
-    path: "/",
+    path: "/inquilino/ExplorarPage",
     icon: Home,
   },
   {
@@ -23,10 +23,12 @@ export function HeaderInquilino() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const activeRoute = (targetPath: string) => {
-    if (targetPath === "/") {
-      return pathname === "/";
+    const current = (pathname || "").toLowerCase();
+    const target = targetPath.toLowerCase();
+    if (target.includes("explorarpage")) {
+      return current === "/" || current.includes("explorarpage");
     }
-    return pathname?.toLowerCase() === targetPath.toLowerCase();
+    return current === target;
   };
 
   const handleNavigation = (targetPath: string) => {
@@ -37,7 +39,7 @@ export function HeaderInquilino() {
   const handleLogout = () => {
     setIsMobileMenuOpen(false);
     authService.logout();
-    router.replace("/loginPage" as any);
+    router.replace("/" as any);
   };
 
   return (
@@ -45,7 +47,7 @@ export function HeaderInquilino() {
       <View className="flex-row items-center justify-between px-4 py-3">
         {/* Botón de Inicio / Logo */}
         <TouchableOpacity
-          onPress={() => handleNavigation("/")}
+          onPress={() => handleNavigation("/inquilino/ExplorarPage")}
           activeOpacity={0.8}
           className="flex-row items-center gap-2 rounded-full bg-white px-4 py-2"
           style={

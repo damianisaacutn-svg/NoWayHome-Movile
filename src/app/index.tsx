@@ -564,6 +564,12 @@ export default function HomePage(): ReactElement {
                       <TouchableOpacity
                         key={id}
                         activeOpacity={0.9}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/inquilino/detallesPropiedadPage" as any,
+                            params: { id },
+                          })
+                        }
                         className="bg-white rounded-3xl overflow-hidden border border-brand/15 shadow-sm"
                       >
                         {/* Contenedor de imagen con altura fija para renderizado nativo confiable */}
