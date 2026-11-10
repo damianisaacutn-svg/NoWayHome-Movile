@@ -1,34 +1,100 @@
 import { usePathname, useRouter } from "expo-router";
-import { Home, LogOut, Menu, User, X } from "lucide-react-native";
-import React, { useState } from "react";
+import {
+  Building2,
+  Home,
+  LogIn,
+  LogOut,
+  Menu,
+  User,
+  UserPlus,
+  X,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
 import { authService } from "@/services/authService";
-
-const NAV_ITEMS = [
-  {
-    label: "Explorar",
-    path: "/inquilino/ExplorarPage",
-    icon: Home,
-  },
-  {
-    label: "Perfil",
-    path: "/inquilino/profileInquilino",
-    icon: User,
-  },
-];
+import {
+  getStoredSessionUser,
+  type SessionUserLike,
+} from "@/utils/sessionRole";
 
 export function HeaderInquilino() {
   const router = useRouter();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [sessionState, setSessionState] = useState<{
+    isAuthenticated: boolean;
+    user: SessionUserLike | null;
+  }>(() => {
+    const initialSession = authService.getSession();
+    const initialUser = getStoredSessionUser();
+    return {
+      isAuthenticated: Boolean(initialSession?.isAuthenticated || initialUser),
+      user: initialUser,
+    };
+  });
+
+  useEffect(() => {
+    const unsubscribe = authService.subscribe((nextSession) => {
+      const nextUser =
+        (nextSession?.user as SessionUserLike | null) || null;
+      setSessionState({
+        isAuthenticated: Boolean(nextSession?.isAuthenticated && nextUser),
+        user: nextUser,
+      });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const isLoggedIn = Boolean(sessionState.isAuthenticated && sessionState.user);
+
+  const navItems = isLoggedIn
+    ? [
+        {
+          label: "Explorar",
+          path: "/inquilino/ExplorarPage",
+          icon: Home,
+        },
+        {
+          label: "Mi Perfil",
+          path: "/inquilino/profileInquilino",
+          icon: User,
+        },
+      ]
+    : [
+        {
+          label: "Inicio",
+          path: "/",
+          icon: Home,
+        },
+        {
+          label: "Explorar",
+          path: "/inquilino/ExplorarPage",
+          icon: Building2,
+        },
+        {
+          label: "Iniciar Sesión",
+          path: "/loginPage",
+          icon: LogIn,
+        },
+        {
+          label: "Registrarse",
+          path: "/registerPage",
+          icon: UserPlus,
+        },
+      ];
 
   const activeRoute = (targetPath: string) => {
     const current = (pathname || "").toLowerCase();
     const target = targetPath.toLowerCase();
-    if (target.includes("explorarpage")) {
-      return current === "/" || current.includes("explorarpage");
+    if (target === "/") {
+      return current === "/";
     }
-    return current === target;
+    if (target.includes("explorarpage")) {
+      return current.includes("explorarpage");
+    }
+    return current === target || current.endsWith(target);
   };
 
   const handleNavigation = (targetPath: string) => {
@@ -47,7 +113,11 @@ export function HeaderInquilino() {
       <View className="flex-row items-center justify-between px-4 py-3">
         {/* Botón de Inicio / Logo */}
         <TouchableOpacity
-          onPress={() => handleNavigation("/inquilino/ExplorarPage")}
+          onPress={() =>
+            handleNavigation(
+              isLoggedIn ? "/inquilino/ExplorarPage" : "/",
+            )
+          }
           activeOpacity={0.8}
           className="flex-row items-center gap-2 rounded-full bg-white px-4 py-2"
           style={
@@ -69,7 +139,7 @@ export function HeaderInquilino() {
 
         {/* Navegación Desktop / Tablet */}
         <View className="hidden md:flex flex-row items-center gap-2">
-          {NAV_ITEMS.map(({ label, path, icon: Icon }) => {
+          {navItems.map(({ label, path, icon: Icon }) => {
             const isActive = activeRoute(path);
             return (
               <TouchableOpacity
@@ -91,15 +161,17 @@ export function HeaderInquilino() {
             );
           })}
 
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="flex-row items-center gap-2 rounded-full bg-red-50 border border-red-100 px-4 py-2 ml-2"
-          >
-            <LogOut size={16} color="#DC2626" />
-            <Text className="text-sm font-semibold text-red-600">
-              Cerrar Sesión
-            </Text>
-          </TouchableOpacity>
+          {isLoggedIn && (
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="flex-row items-center gap-2 rounded-full bg-red-50 border border-red-100 px-4 py-2 ml-2"
+            >
+              <LogOut size={16} color="#DC2626" />
+              <Text className="text-sm font-semibold text-red-600">
+                Cerrar Sesión
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Botón de Menú Móvil */}
@@ -120,7 +192,7 @@ export function HeaderInquilino() {
       {isMobileMenuOpen && (
         <View className="border-t border-[#A67C52]/10 bg-[#FAFAFA] px-4 py-4 md:hidden">
           <View className="flex-col gap-3">
-            {NAV_ITEMS.map(({ label, path, icon: Icon }) => {
+            {navItems.map(({ label, path, icon: Icon }) => {
               const isActive = activeRoute(path);
               return (
                 <TouchableOpacity
@@ -142,15 +214,17 @@ export function HeaderInquilino() {
               );
             })}
 
-            <TouchableOpacity
-              onPress={handleLogout}
-              className="flex-row items-center justify-center gap-2 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mt-1"
-            >
-              <LogOut size={18} color="#DC2626" />
-              <Text className="text-sm font-semibold text-red-600">
-                Cerrar Sesión
-              </Text>
-            </TouchableOpacity>
+            {isLoggedIn && (
+              <TouchableOpacity
+                onPress={handleLogout}
+                className="flex-row items-center justify-center gap-2 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 mt-1"
+              >
+                <LogOut size={18} color="#DC2626" />
+                <Text className="text-sm font-semibold text-red-600">
+                  Cerrar Sesión
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}

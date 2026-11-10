@@ -4,6 +4,10 @@ import { Text, TouchableOpacity, View } from "react-native";
 // Usamos lucide-react-native para móviles
 import { Home, LogIn, LogOut, Menu, User, X } from "lucide-react-native";
 import { authService } from "../services/authService";
+import {
+  resolveUserRole,
+  type SessionUserLike,
+} from "../utils/sessionRole";
 
 export function Header() {
   const router = useRouter();
@@ -35,10 +39,10 @@ export function Header() {
 
   const isAuthenticated = Boolean(session?.isAuthenticated);
   const isArrendatario =
-    session?.role === "arrendatario" ||
-    (session?.user as any)?.role === "arrendatario" ||
-    (session?.user as any)?.rol === "arrendatario" ||
-    Boolean((session?.user as any)?.id_arrendatario);
+    resolveUserRole(
+      (session?.user as SessionUserLike | null) ?? null,
+      session?.role,
+    ) === "arrendatario";
   const profileRoute = isArrendatario
     ? "/arrendatario/profileArrendatario"
     : "/inquilino/profileInquilino";

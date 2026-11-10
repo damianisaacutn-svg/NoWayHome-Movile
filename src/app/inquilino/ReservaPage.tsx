@@ -31,9 +31,14 @@ import {
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
 import { parseDateOnly } from "@/utils/dateUtils";
-import { AlertMessage, type AlertVariant } from "./components/AlertMessage";
-import { HeaderInquilino } from "./components/headerInquilino";
-import { LoadingState } from "./components/LoadingState";
+import {
+  getStoredSessionUser,
+  getTenantId,
+  resolveUserRole,
+} from "@/utils/sessionRole";
+import { AlertMessage, type AlertVariant } from "../../components/AlertMessage";
+import { HeaderInquilino } from "../../components/headerInquilino";
+import { LoadingState } from "../../components/LoadingState";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function buildEndpointUrl(path: string): string {
@@ -51,22 +56,6 @@ function resolveImageUri(raw: unknown): string {
   if (/^(https?:\/\/|data:image\/)/i.test(trimmed)) return trimmed;
   const normalizedPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${API_BASE_URL}${normalizedPath}`;
-}
-
-function getStoredUser(): Record<string, any> | null {
-  const session = authService.getSession();
-  if (session?.user && typeof session.user === "object") {
-    return session.user as Record<string, any>;
-  }
-  const rawStored = authService.getStorageItem("user");
-  if (rawStored) {
-    try {
-      return JSON.parse(rawStored);
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 function toIsoDateString(date: Date): string {
@@ -264,7 +253,7 @@ export function ReservaPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [userData, setUserData] = useState<Record<string, any> | null>(() =>
-    getStoredUser(),
+    getStoredSessionUser() as Record<string, any> | null,
   );
   const [propiedad, setPropiedad] = useState<PropiedadItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -304,13 +293,22 @@ export function ReservaPage() {
 
     const fetchDatos = async () => {
       try {
-        const storedUser = getStoredUser();
-        if (!storedUser) {
-          router.replace("/loginPage" as any);
+        const session = authService.getSession();
+        const storedUser = getStoredSessionUser();
+        if (!session?.isAuthenticated || !storedUser) {
+          router.replace("/" as any);
           return;
         }
+
+        const role = resolveUserRole(storedUser, session?.role);
+        const tenantId = getTenantId(storedUser, session?.role);
+        if (role === "arrendatario" && !tenantId) {
+          router.replace("/arrendatario/profileArrendatario" as any);
+          return;
+        }
+
         if (isMounted) {
-          setUserData(storedUser);
+          setUserData(storedUser as Record<string, any>);
         }
 
         if (!id) {
@@ -413,9 +411,41 @@ export function ReservaPage() {
       return;
     }
 
-    const activeUser = userData || getStoredUser();
-    const idInquilino = activeUser?.id_inquilino ?? activeUser?.id;
+    const session = authService.getSession();
+    const activeUser = getStoredSessionUser() || userData;
     const idPropiedad = propiedad?.id_propiedad ?? propiedad?.id ?? id;
+
+    if (!session?.isAuthenticated || !activeUser) {
+      Alert.alert(
+        "Sesión requerida",
+        "Por favor inicia sesión como huésped para solicitar una reserva.",
+        [
+          {
+            text: "Ir a Login",
+            onPress: () => router.replace("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
+
+    const role = resolveUserRole(activeUser, session?.role);
+    const idInquilino = getTenantId(activeUser, session?.role);
+
+    if (role === "arrendatario" && !idInquilino) {
+      Alert.alert(
+        "Modo Anfitrión",
+        "Has iniciado sesión como anfitrión. Para solicitar reservas debes usar una cuenta de huésped.",
+        [
+          { text: "Volver", style: "cancel" },
+          {
+            text: "Cambiar cuenta",
+            onPress: () => router.replace("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
 
     if (!idInquilino) {
       Alert.alert(
@@ -742,6 +772,13 @@ export function ReservaPage() {
               <Text className="font-poppins font-semibold text-base text-[#5F5F5F] mb-3">
                 Resumen de pago
               </Text>
+              {String(
+                (propiedad as Record<string, any>).tipo_precio || "",
+              ).toLowerCase() === "mensual" && (
+                <Text className="text-xs text-[#A67C52] mb-2">
+                  Tarifa de referencia publicada como mensual (cálculo estimado por noche).
+                </Text>
+              )}
               <View className="flex-col gap-2 mb-3">
                 <View className="flex-row justify-between">
                   <Text className="text-sm text-[#5F5F5F]/85">
@@ -804,6 +841,11 @@ export function ReservaPage() {
         </View>
 
         <CalendarPickerModal
+          key={
+            showPickerInicio
+              ? `inicio-${fechaInicio || "init"}`
+              : "inicio-closed"
+          }
           visible={showPickerInicio}
           title="Selecciona fecha de entrada"
           selectedDateStr={fechaInicio}
@@ -813,6 +855,11 @@ export function ReservaPage() {
         />
 
         <CalendarPickerModal
+          key={
+            showPickerFin
+              ? `fin-${fechaFin || fechaInicio || "init"}`
+              : "fin-closed"
+          }
           visible={showPickerFin}
           title="Selecciona fecha de salida"
           selectedDateStr={fechaFin}

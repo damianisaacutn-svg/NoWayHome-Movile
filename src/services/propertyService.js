@@ -9,13 +9,16 @@ function buildEndpointUrl(path) {
 export async function createProperty(formData) {
   const response = await fetch(buildEndpointUrl('/arrendatario/properties'), {
     method: 'POST',
+    headers: {
+      Accept: 'application/json',
+    },
     body: formData,
   })
 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudo registrar la propiedad')
+    throw new Error(data.message || data.error || 'No se pudo registrar la propiedad')
   }
 
   return data
@@ -37,10 +40,11 @@ export async function getLandlordProperties(idArrendatario) {
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudieron cargar tus propiedades. Intenta nuevamente.')
+    throw new Error(data.message || data.error || 'No se pudieron cargar tus propiedades. Intenta nuevamente.')
   }
 
-  return data.properties || []
+  if (Array.isArray(data)) return data
+  return data.properties || data.propiedades || data.data || []
 }
 
 export async function getPropertyById(idPropiedad, idArrendatario) {
@@ -49,7 +53,7 @@ export async function getPropertyById(idPropiedad, idArrendatario) {
   })
 
   const response = await fetch(
-    buildEndpointUrl(`/arrendatario/properties/${idPropiedad}?${params.toString()}`),
+    buildEndpointUrl(`/arrendatario/properties/${encodeURIComponent(String(idPropiedad))}?${params.toString()}`),
     {
       headers: {
         Accept: 'application/json',
@@ -59,22 +63,28 @@ export async function getPropertyById(idPropiedad, idArrendatario) {
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudo cargar la propiedad.')
+    throw new Error(data.message || data.error || 'No se pudo cargar la propiedad.')
   }
 
-  return data.property
+  return data.property || data.propiedad || data.data || data
 }
 
 export async function updateProperty(idPropiedad, formData) {
-  const response = await fetch(buildEndpointUrl(`/arrendatario/properties/${idPropiedad}`), {
-    method: 'PATCH',
-    body: formData,
-  })
+  const response = await fetch(
+    buildEndpointUrl(`/arrendatario/properties/${encodeURIComponent(String(idPropiedad))}`),
+    {
+      method: 'PATCH',
+      headers: {
+        Accept: 'application/json',
+      },
+      body: formData,
+    }
+  )
 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudo actualizar la propiedad.')
+    throw new Error(data.message || data.error || 'No se pudo actualizar la propiedad.')
   }
 
   return data
@@ -87,17 +97,20 @@ export async function deletePropertyImage(idPropiedad, imageId, idArrendatario) 
 
   const response = await fetch(
     buildEndpointUrl(
-      `/arrendatario/properties/${idPropiedad}/images/${imageId}?${params.toString()}`
+      `/arrendatario/properties/${encodeURIComponent(String(idPropiedad))}/images/${encodeURIComponent(String(imageId))}?${params.toString()}`
     ),
     {
       method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+      },
     }
   )
 
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudo eliminar la imagen.')
+    throw new Error(data.message || data.error || 'No se pudo eliminar la imagen.')
   }
 
   return data
@@ -105,9 +118,14 @@ export async function deletePropertyImage(idPropiedad, imageId, idArrendatario) 
 
 export async function replacePropertyImage(idPropiedad, imageId, formData) {
   const response = await fetch(
-    buildEndpointUrl(`/arrendatario/properties/${idPropiedad}/images/${imageId}`),
+    buildEndpointUrl(
+      `/arrendatario/properties/${encodeURIComponent(String(idPropiedad))}/images/${encodeURIComponent(String(imageId))}`
+    ),
     {
       method: 'PATCH',
+      headers: {
+        Accept: 'application/json',
+      },
       body: formData,
     }
   )
@@ -115,8 +133,9 @@ export async function replacePropertyImage(idPropiedad, imageId, formData) {
   const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(data.message || 'No se pudo reemplazar la imagen.')
+    throw new Error(data.message || data.error || 'No se pudo reemplazar la imagen.')
   }
 
   return data
 }
+

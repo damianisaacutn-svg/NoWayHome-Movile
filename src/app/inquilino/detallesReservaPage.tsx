@@ -42,9 +42,14 @@ import {
 import { authService } from "@/services/authService";
 import { tenantBookingService } from "@/services/tenantBookingService";
 import { formatDateLong, formatDateShort, parseDateOnly } from "@/utils/dateUtils";
-import { AlertMessage } from "./components/AlertMessage";
-import { HeaderInquilino } from "./components/headerInquilino";
-import { LoadingState } from "./components/LoadingState";
+import {
+  getStoredSessionUser,
+  getTenantId,
+  resolveUserRole,
+} from "@/utils/sessionRole";
+import { AlertMessage } from "../../components/AlertMessage";
+import { HeaderInquilino } from "../../components/headerInquilino";
+import { LoadingState } from "../../components/LoadingState";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function buildEndpointUrl(path: string): string {
@@ -89,22 +94,10 @@ function resolveImageUri(raw: unknown): string | null {
   return null;
 }
 
-function getStoredUserId(): string | number | null {
+function getActiveTenantId(): string | number | null {
   const session = authService.getSession();
-  const userObj = (session?.user || {}) as Record<string, any>;
-  if (userObj?.id_inquilino || userObj?.id) {
-    return userObj.id_inquilino ?? userObj.id;
-  }
-  const rawStored = authService.getStorageItem("user");
-  if (rawStored) {
-    try {
-      const parsed = JSON.parse(rawStored);
-      return parsed?.id_inquilino ?? parsed?.id ?? null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  if (!session?.isAuthenticated) return null;
+  return getTenantId(getStoredSessionUser(), session?.role);
 }
 
 const calculateNights = (
@@ -354,6 +347,20 @@ export function DetalleReservaPage() {
     let isMounted = true;
 
     const fetchReserva = async () => {
+      const session = authService.getSession();
+      const storedUser = getStoredSessionUser();
+      if (!session?.isAuthenticated || !storedUser) {
+        router.replace("/" as any);
+        return;
+      }
+
+      const role = resolveUserRole(storedUser, session?.role);
+      const tenantId = getTenantId(storedUser, session?.role);
+      if (role === "arrendatario" && !tenantId) {
+        router.replace("/arrendatario/ReservasArrendatario" as any);
+        return;
+      }
+
       if (!idReserva) {
         if (isMounted) {
           setError("ID de reserva no especificado.");
@@ -379,7 +386,7 @@ export function DetalleReservaPage() {
             data?.reservation || data?.reserva || data?.data || data || null;
         } catch {
           // Fallback: buscar la reserva dentro del perfil del inquilino
-          const storedUserId = getStoredUserId();
+          const storedUserId = getActiveTenantId();
           if (storedUserId) {
             const perfilRes =
               await inquilinoController.cargarPerfilCompleto(storedUserId);
@@ -449,7 +456,7 @@ export function DetalleReservaPage() {
     return () => {
       isMounted = false;
     };
-  }, [idReserva]);
+  }, [idReserva, router]);
 
   const handleOpenPayPal = async () => {
     if (!reserva) return;
@@ -547,7 +554,7 @@ export function DetalleReservaPage() {
     const targetInquilinoId =
       reserva.id_inquilino ??
       reserva.inquilino?.id_inquilino ??
-      getStoredUserId();
+      getActiveTenantId();
 
     if (!targetReservaId || !targetInquilinoId) {
       setCancelError("No se pudo identificar la reserva o el usuario.");
@@ -594,7 +601,7 @@ export function DetalleReservaPage() {
     const targetInquilinoId =
       reserva.id_inquilino ??
       reserva.inquilino?.id_inquilino ??
-      getStoredUserId();
+      getActiveTenantId();
 
     if (!targetReservaId || !targetInquilinoId) return;
 
@@ -1236,6 +1243,7 @@ export function DetalleReservaPage() {
 
         {/* Modal de Cancelación */}
         <CancelBookingModal
+          key={showCancelConfirm ? "cancel-open" : "cancel-closed"}
           open={showCancelConfirm}
           onClose={() => setShowCancelConfirm(false)}
           onConfirm={(motivo) => void handleCancelarReserva(motivo)}

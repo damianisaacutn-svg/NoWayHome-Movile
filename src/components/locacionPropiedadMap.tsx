@@ -44,15 +44,14 @@ export function PropertyLocationMap({
   const longitude = toCoordinate(longitud);
   const hasCoordinates = latitude !== null && longitude !== null;
 
-  const [latInput, setLatInput] = useState<string>(
-    latitude !== null ? String(latitude) : String(DEFAULT_CENTER.latitude),
-  );
-  const [lngInput, setLngInput] = useState<string>(
-    longitude !== null ? String(longitude) : String(DEFAULT_CENTER.longitude),
-  );
+  const [latDraft, setLatDraft] = useState<string | null>(null);
+  const [lngDraft, setLngDraft] = useState<string | null>(null);
 
-  const displayLat = latitude ?? toCoordinate(latInput) ?? DEFAULT_CENTER.latitude;
-  const displayLng = longitude ?? toCoordinate(lngInput) ?? DEFAULT_CENTER.longitude;
+  const latInput = latDraft ?? (latitude !== null ? String(latitude) : "");
+  const lngInput = lngDraft ?? (longitude !== null ? String(longitude) : "");
+
+  const displayLat = latitude ?? DEFAULT_CENTER.latitude;
+  const displayLng = longitude ?? DEFAULT_CENTER.longitude;
 
   const handleOpenExternalMap = () => {
     const query = hasCoordinates
@@ -65,16 +64,39 @@ export function PropertyLocationMap({
     void Linking.openURL(url);
   };
 
-  const handleApplyEditableCoords = (nextLatStr: string, nextLngStr: string) => {
-    setLatInput(nextLatStr);
-    setLngInput(nextLngStr);
+  const handleLatTextChange = (nextLatStr: string) => {
+    setLatDraft(nextLatStr);
     if (!editable || !onChange) return;
 
     const parsedLat = toCoordinate(nextLatStr);
+    const parsedLng = toCoordinate(lngInput);
+    if (parsedLat !== null && parsedLng !== null) {
+      onChange({
+        latitud: Number(parsedLat.toFixed(8)),
+        longitud: Number(parsedLng.toFixed(8)),
+      });
+    } else if (parsedLat !== null && longitude === null && lngInput === "") {
+      onChange({
+        latitud: Number(parsedLat.toFixed(8)),
+        longitud: DEFAULT_CENTER.longitude,
+      });
+    }
+  };
+
+  const handleLngTextChange = (nextLngStr: string) => {
+    setLngDraft(nextLngStr);
+    if (!editable || !onChange) return;
+
+    const parsedLat = toCoordinate(latInput);
     const parsedLng = toCoordinate(nextLngStr);
     if (parsedLat !== null && parsedLng !== null) {
       onChange({
         latitud: Number(parsedLat.toFixed(8)),
+        longitud: Number(parsedLng.toFixed(8)),
+      });
+    } else if (parsedLng !== null && latitude === null && latInput === "") {
+      onChange({
+        latitud: DEFAULT_CENTER.latitude,
         longitud: Number(parsedLng.toFixed(8)),
       });
     }
@@ -138,8 +160,11 @@ export function PropertyLocationMap({
             <Text className="text-[11px] text-[#5F5F5F]/80 mb-1">Latitud</Text>
             <TextInput
               value={latInput}
-              onChangeText={(val) => handleApplyEditableCoords(val, lngInput)}
+              onChangeText={handleLatTextChange}
+              onBlur={() => setLatDraft(null)}
               keyboardType="numeric"
+              placeholder={String(DEFAULT_CENTER.latitude)}
+              placeholderTextColor="#5F5F5F60"
               className="h-9 rounded-lg border border-[#6B8E23]/20 bg-white px-2.5 text-xs text-[#5F5F5F]"
             />
           </View>
@@ -147,8 +172,11 @@ export function PropertyLocationMap({
             <Text className="text-[11px] text-[#5F5F5F]/80 mb-1">Longitud</Text>
             <TextInput
               value={lngInput}
-              onChangeText={(val) => handleApplyEditableCoords(latInput, val)}
+              onChangeText={handleLngTextChange}
+              onBlur={() => setLngDraft(null)}
               keyboardType="numeric"
+              placeholder={String(DEFAULT_CENTER.longitude)}
+              placeholderTextColor="#5F5F5F60"
               className="h-9 rounded-lg border border-[#6B8E23]/20 bg-white px-2.5 text-xs text-[#5F5F5F]"
             />
           </View>

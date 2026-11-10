@@ -29,7 +29,8 @@ export const landlordBookingService = {
     const data = await requestJson(
       `/arrendatario/reservas?id_arrendatario=${encodeURIComponent(String(idArrendatario))}`
     )
-    return data.reservations || []
+    if (Array.isArray(data)) return data
+    return data.reservations || data.reservas || data.data || []
   },
 
   cambiarEstadoReserva: async (idReserva, idArrendatario, estado, motivo = '') => {
@@ -47,6 +48,6 @@ export const landlordBookingService = {
         motivo_rechazo: typeof motivo === 'string' ? motivo.trim() : '',
       }),
     })
-    return data.reserva
+    return data.reserva || data.reservation || data
   },
 }

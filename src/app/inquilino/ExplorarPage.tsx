@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   DollarSign,
@@ -30,10 +30,15 @@ import {
   type PropiedadItem,
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
-import { AlertMessage } from "./components/AlertMessage";
-import { EmptyState } from "./components/EmptyState";
-import { HeaderInquilino } from "./components/headerInquilino";
-import { LoadingState } from "./components/LoadingState";
+import {
+  getStoredSessionUser,
+  getTenantId,
+  resolveUserRole,
+} from "@/utils/sessionRole";
+import { AlertMessage } from "../../components/AlertMessage";
+import { EmptyState } from "../../components/EmptyState";
+import { HeaderInquilino } from "../../components/headerInquilino";
+import { LoadingState } from "../../components/LoadingState";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function buildEndpointUrl(path: string): string {
@@ -44,22 +49,10 @@ function buildEndpointUrl(path: string): string {
   return `${API_URL}${normalizedPath}`;
 }
 
-function getStoredUserId(): string | number | null {
+function getActiveTenantId(): string | number | null {
   const session = authService.getSession();
-  const userObj = (session?.user || {}) as Record<string, any>;
-  if (userObj?.id_inquilino || userObj?.id) {
-    return userObj.id_inquilino ?? userObj.id;
-  }
-  const rawStored = authService.getStorageItem("user");
-  if (rawStored) {
-    try {
-      const parsed = JSON.parse(rawStored);
-      return parsed?.id_inquilino ?? parsed?.id ?? null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  if (!session?.isAuthenticated) return null;
+  return getTenantId(getStoredSessionUser(), session?.role);
 }
 
 function extractFirstImageFromList(
@@ -113,20 +106,45 @@ export function ExplorarPage() {
   const [error, setError] = useState("");
   const [favoritos, setFavoritos] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | number | null>(() =>
-    getStoredUserId(),
+    getActiveTenantId(),
   );
+  const [isStrictLandlord, setIsStrictLandlord] = useState<boolean>(() => {
+    const session = authService.getSession();
+    const u = getStoredSessionUser();
+    if (!session?.isAuthenticated || !u) return false;
+    return (
+      resolveUserRole(u, session?.role) === "arrendatario" &&
+      !getTenantId(u, session?.role)
+    );
+  });
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
-      const u = (nextSession?.user || {}) as Record<string, any>;
-      setUserId(u?.id_inquilino ?? u?.id ?? null);
+      if (!nextSession?.isAuthenticated) {
+        setUserId(null);
+        setIsStrictLandlord(false);
+        setFavoritos(new Set());
+        return;
+      }
+      const u = getStoredSessionUser();
+      setUserId(getTenantId(u, nextSession?.role));
+      setIsStrictLandlord(
+        resolveUserRole(u, nextSession?.role) === "arrendatario" &&
+          !getTenantId(u, nextSession?.role),
+      );
     });
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if (isStrictLandlord) {
+      router.replace("/arrendatario/profileArrendatario" as any);
+    }
+  }, [isStrictLandlord, router]);
+
   const fetchCatalogAndFavorites = useCallback(async () => {
-    const currentUserId = getStoredUserId();
+    const currentUserId = getActiveTenantId();
 
     const propiedadesPromise = propiedadController.cargarPropiedades();
     const favoritosPromise = currentUserId
@@ -180,6 +198,10 @@ export function ExplorarPage() {
   }, []);
 
   useEffect(() => {
+    if (isStrictLandlord) {
+      return;
+    }
+
     let isMounted = true;
 
     const init = async () => {
@@ -211,7 +233,31 @@ export function ExplorarPage() {
     return () => {
       isMounted = false;
     };
-  }, [fetchCatalogAndFavorites]);
+  }, [fetchCatalogAndFavorites, isStrictLandlord]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isStrictLandlord) {
+        return;
+      }
+
+      let isMounted = true;
+      void fetchCatalogAndFavorites()
+        .then((data) => {
+          if (!isMounted) return;
+          setUserId(data.currentUserId);
+          setPropiedades(data.propiedades);
+          setFavoritos(data.favoritos);
+          setError("");
+        })
+        .catch(() => {
+          // Mantener datos previos si falla recarga silenciosa en foco
+        });
+      return () => {
+        isMounted = false;
+      };
+    }, [fetchCatalogAndFavorites, isStrictLandlord]),
+  );
 
   const cargarDatos = async (refresh = false) => {
     try {
@@ -248,7 +294,9 @@ export function ExplorarPage() {
         "Propiedad",
     ).toLowerCase();
     const ubicacionProp = String(
-      prop.ubicacion || prop.direccion || prop.ciudad || "",
+      prop.ubicacion ||
+        [prop.direccion, prop.ciudad, prop.pais].filter(Boolean).join(", ") ||
+        "",
     ).toLowerCase();
 
     const matchTexto =
@@ -258,7 +306,11 @@ export function ExplorarPage() {
 
     const maxPriceNum = parseFloat(precioMax);
     const precioProp = Number(
-      prop.precio_noche ?? prop.precio ?? prop.costo ?? 0,
+      (prop as Record<string, any>).precio_por_noche ??
+        prop.precio_noche ??
+        prop.precio ??
+        prop.costo ??
+        0,
     );
     const matchPrecio =
       Number.isNaN(maxPriceNum) || maxPriceNum <= 0 || precioProp <= maxPriceNum;
@@ -296,11 +348,45 @@ export function ExplorarPage() {
   };
 
   const handleToggleFavorito = async (propiedadId: string | number) => {
-    const activeUserId = userId ?? getStoredUserId();
+    const session = authService.getSession();
+    const storedUser = getStoredSessionUser();
+    const currentRole = resolveUserRole(storedUser, session?.role);
+    const activeUserId = getActiveTenantId() ?? userId;
+
+    if (!session?.isAuthenticated || !storedUser) {
+      Alert.alert(
+        "Sesión requerida",
+        "Debes iniciar sesión como huésped para gestionar tus favoritos.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Iniciar sesión",
+            onPress: () => router.push("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
+
+    if (currentRole === "arrendatario" && !getTenantId(storedUser, session?.role)) {
+      Alert.alert(
+        "Modo Anfitrión",
+        "Estás navegando con una cuenta de anfitrión. Inicia sesión con una cuenta de huésped para guardar favoritos.",
+        [
+          { text: "Volver", style: "cancel" },
+          {
+            text: "Cambiar cuenta",
+            onPress: () => router.push("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
+
     if (!activeUserId) {
       Alert.alert(
         "Sesión requerida",
-        "Debes iniciar sesión para gestionar tus favoritos.",
+        "Debes iniciar sesión como huésped para gestionar tus favoritos.",
         [
           { text: "Cancelar", style: "cancel" },
           {
@@ -358,6 +444,10 @@ export function ExplorarPage() {
       params: { id: String(propiedadId) },
     });
   };
+
+  if (isStrictLandlord) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -512,11 +602,20 @@ export function ExplorarPage() {
                   "Propiedad en NoWayHome";
                 const ubicacion =
                   prop.ubicacion ||
-                  prop.direccion ||
-                  prop.ciudad ||
+                  [prop.direccion, prop.ciudad, prop.pais]
+                    .filter(Boolean)
+                    .join(", ") ||
                   "Ubicación no especificada";
                 const precio =
-                  prop.precio_noche ?? prop.precio ?? prop.costo ?? 0;
+                  (prop as Record<string, any>).precio_por_noche ??
+                  prop.precio_noche ??
+                  prop.precio ??
+                  prop.costo ??
+                  0;
+                const esMensual =
+                  String(
+                    (prop as Record<string, any>).tipo_precio || "",
+                  ).toLowerCase() === "mensual";
                 const imagen = failedImages[idKey]
                   ? PLACEHOLDER_PROPERTY_IMAGE
                   : resolvePropertyImage(prop);
@@ -593,7 +692,7 @@ export function ExplorarPage() {
                               {formatPrice(precio)}
                             </Text>
                             <Text className="ml-1 text-sm font-medium text-[#5F5F5F]/60">
-                              / noche
+                              {esMensual ? "/ mes" : "/ noche"}
                             </Text>
                           </View>
                           {prop.capacidad ? (

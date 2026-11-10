@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   AlertCircle,
@@ -35,7 +35,12 @@ import { authController } from "../../controllers/authController";
 import { inquilinoController } from "@/controllers/inquilinoController";
 import { authService } from "@/services/authService";
 import { tenantBookingService } from "@/services/tenantBookingService";
-import { HeaderInquilino } from "./components/headerInquilino";
+import {
+  getStoredSessionUser as getSessionUserFromStorage,
+  getTenantId,
+  resolveUserRole,
+} from "@/utils/sessionRole";
+import { HeaderInquilino } from "../../components/headerInquilino";
 
 export interface TenantProfileData {
   id?: number | string;
@@ -68,22 +73,6 @@ function formatDateLong(rawDate?: string | null): string {
     month: "short",
     year: "numeric",
   });
-}
-
-function getStoredSessionUser(): TenantProfileData | null {
-  const session = authService.getSession();
-  if (session?.user && typeof session.user === "object") {
-    return session.user as TenantProfileData;
-  }
-  const rawStoredUser = authService.getStorageItem("user");
-  if (rawStoredUser) {
-    try {
-      return JSON.parse(rawStoredUser) as TenantProfileData;
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 interface EditInquilinoModalProps {
@@ -134,7 +123,7 @@ function EditInquilinoModal({
 
     if (Object.values(nextErrors).some(Boolean)) return;
 
-    const userId = userData?.id_inquilino ?? userData?.id;
+    const userId = getTenantId(userData);
     if (!userId) {
       setServerError("No se pudo identificar tu cuenta de inquilino.");
       return;
@@ -318,7 +307,7 @@ function ChangePasswordModal({
     setError("");
     setSuccess("");
 
-    const userId = userData?.id_inquilino ?? userData?.id;
+    const userId = getTenantId(userData) ?? undefined;
     const result = await authController.updatePassword({
       userId,
       role: "inquilino",
@@ -563,8 +552,8 @@ function CancelBookingModal({
 export function ProfilePage() {
   const router = useRouter();
 
-  const [sessionUser, setSessionUser] = useState<TenantProfileData | null>(() =>
-    getStoredSessionUser(),
+  const [sessionUser, setSessionUser] = useState<TenantProfileData | null>(
+    () => getSessionUserFromStorage() as TenantProfileData | null,
   );
   const [fetchedProfile, setFetchedProfile] =
     useState<TenantProfileData | null>(null);
@@ -596,6 +585,13 @@ export function ProfilePage() {
     recordatorios: true,
     newsletter: false,
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    }, []),
+  );
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
@@ -612,14 +608,29 @@ export function ProfilePage() {
     return unsubscribe;
   }, [router]);
 
+  const resolvedRole = useMemo(
+    () => resolveUserRole(sessionUser),
+    [sessionUser],
+  );
+
   const userId = useMemo(() => {
-    return (
-      sessionUser?.id_inquilino ??
-      sessionUser?.id ??
-      fetchedProfile?.id_inquilino ??
-      fetchedProfile?.id
-    );
+    return getTenantId(sessionUser) ?? getTenantId(fetchedProfile);
   }, [sessionUser, fetchedProfile]);
+
+  const isAuthorizedTenant = Boolean(
+    sessionUser &&
+      (resolvedRole !== "arrendatario" || Boolean(sessionUser?.id_inquilino)) &&
+      userId,
+  );
+
+  useEffect(() => {
+    if (!authService.isAuthenticated() || !sessionUser) {
+      return;
+    }
+    if (!isAuthorizedTenant) {
+      router.replace("/arrendatario/profileArrendatario" as any);
+    }
+  }, [isAuthorizedTenant, router, sessionUser]);
 
   const syncUserInSession = useCallback((nextUserData: TenantProfileData) => {
     const currentSession = authService.getSession();
@@ -628,7 +639,7 @@ export function ProfilePage() {
     }
     const currentUser =
       (currentSession?.user as TenantProfileData) ||
-      getStoredSessionUser() ||
+      (getSessionUserFromStorage() as TenantProfileData | null) ||
       {};
     const mergedUser: TenantProfileData = {
       ...currentUser,
@@ -639,6 +650,7 @@ export function ProfilePage() {
         currentUser?.id_inquilino ??
         currentUser?.id,
       role: "inquilino",
+      rol: "inquilino",
     };
 
     authService.setStorageItem("user", JSON.stringify(mergedUser));
@@ -651,7 +663,7 @@ export function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!userId) {
+    if (!isAuthorizedTenant || !userId) {
       return;
     }
 
@@ -687,7 +699,10 @@ export function ProfilePage() {
                 estado_reserva: reserva.estado_reserva || reserva.estado,
                 precio_base:
                   reserva.precio_base ??
-                  (reserva.precio || reserva.precio_noche || 0),
+                  (reserva.precio ||
+                    reserva.precio_noche ||
+                    reserva.precio_por_noche ||
+                    0),
                 comision_y_otros:
                   reserva.comision_y_otros ??
                   reserva.tarifa_servicio ??
@@ -741,7 +756,7 @@ export function ProfilePage() {
     return () => {
       isMounted = false;
     };
-  }, [userId, syncUserInSession]);
+  }, [userId, isAuthorizedTenant, syncUserInSession, refreshTrigger]);
 
   const handleUpdateSuccess = (updatedUser: TenantProfileData) => {
     setFetchedProfile((prev) => ({
@@ -752,7 +767,7 @@ export function ProfilePage() {
   };
 
   const handleRemoveFavorito = async (propiedadId: number | string) => {
-    const currentUserId = userData?.id_inquilino || userData?.id;
+    const currentUserId = getTenantId(userData) ?? userId;
     if (!currentUserId) {
       Alert.alert(
         "Error",
@@ -777,10 +792,16 @@ export function ProfilePage() {
         throw new Error(result.message || "Ocurrió un error en el servidor.");
       }
 
+      const targetIdStr = String(propiedadId);
       setFavoritos((prevFavoritos) =>
-        prevFavoritos.filter(
-          (fav) => fav.propiedad?.id_propiedad !== propiedadId,
-        ),
+        prevFavoritos.filter((fav) => {
+          const favPropId =
+            fav.propiedad?.id_propiedad ??
+            fav.id_propiedad ??
+            fav.propiedad?.id ??
+            fav.id;
+          return String(favPropId ?? "") !== targetIdStr;
+        }),
       );
       Alert.alert("Éxito", "Propiedad eliminada de tus favoritos.");
     } catch (error: unknown) {
@@ -791,6 +812,10 @@ export function ProfilePage() {
       Alert.alert("Error", message);
     }
   };
+
+  if (!isAuthorizedTenant) {
+    return null;
+  }
 
   if (isLoading && !userData?.nombre && !userData?.correo) {
     return (
@@ -895,7 +920,7 @@ export function ProfilePage() {
   };
 
   const handleCancelBooking = async (cancellationReason: string) => {
-    const tenantId = userData?.id_inquilino || userData?.id;
+    const tenantId = getTenantId(userData) ?? userId;
     if (!bookingToCancel?.id_reserva || !tenantId) return;
 
     setIsCancelling(true);
@@ -925,7 +950,7 @@ export function ProfilePage() {
         "Reserva cancelada correctamente",
         isPaid
           ? "La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior."
-          : "",
+          : "Tu reserva ha sido cancelada correctamente.",
       );
       setBookingToCancel(null);
     } catch {
@@ -1089,13 +1114,16 @@ export function ProfilePage() {
                     estadoNormalizado = "confirmada";
                   if (estadoCrudo === "pending")
                     estadoNormalizado = "pendiente";
-                  if (estadoCrudo === "cancelled")
+                  if (estadoCrudo === "cancelled" || estadoCrudo === "canceled")
                     estadoNormalizado = "cancelada";
+                  if (estadoCrudo === "rejected")
+                    estadoNormalizado = "rechazada";
 
                   const statusColor =
                     estadoNormalizado === "confirmada"
                       ? "text-[#6B8E23]"
-                      : estadoNormalizado === "cancelada"
+                      : estadoNormalizado === "cancelada" ||
+                          estadoNormalizado === "rechazada"
                         ? "text-red-600"
                         : "text-[#A67C52]";
 
@@ -1250,12 +1278,19 @@ export function ProfilePage() {
                           <View className="items-start">
                             <Text className="font-poppins font-semibold text-2xl text-[#6B8E23]">
                               {formatPrice(
-                                favorite.propiedad?.precio_noche ||
-                                  favorite.propiedad?.precio,
+                                favorite.propiedad?.precio_por_noche ||
+                                  favorite.propiedad?.precio_noche ||
+                                  favorite.propiedad?.precio ||
+                                  favorite.precio_por_noche ||
+                                  favorite.precio_noche ||
+                                  favorite.precio,
                               )}
                             </Text>
                             <Text className="text-sm text-[#5F5F5F] mt-1">
-                              / noche
+                              {favorite.propiedad?.tipo_precio === "mensual" ||
+                              favorite.tipo_precio === "mensual"
+                                ? "/ mes"
+                                : "/ noche"}
                             </Text>
                           </View>
 
@@ -1412,6 +1447,11 @@ export function ProfilePage() {
         userData={userData}
       />
       <CancelBookingModal
+        key={
+          bookingToCancel
+            ? `cancel-${bookingToCancel.id_reserva ?? bookingToCancel.id ?? "open"}`
+            : "cancel-closed"
+        }
         open={Boolean(bookingToCancel)}
         onClose={() => setBookingToCancel(null)}
         onConfirm={handleCancelBooking}

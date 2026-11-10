@@ -207,7 +207,7 @@ export default function LoginPage() {
             resultPayload?.id ??
             matchingRegistered?.id_inquilino ??
             matchingRegistered?.id)
-          : rawUser.id_inquilino,
+          : (rawUser.id_inquilino ?? undefined),
       id_arrendatario:
         resolvedRole === "arrendatario"
           ? (rawUser.id_arrendatario ??
@@ -217,7 +217,7 @@ export default function LoginPage() {
             resultPayload?.id ??
             matchingRegistered?.id_arrendatario ??
             matchingRegistered?.id)
-          : rawUser.id_arrendatario,
+          : (rawUser.id_arrendatario ?? undefined),
       nombre:
         rawUser.nombre ||
         rawUser.name ||
@@ -232,6 +232,7 @@ export default function LoginPage() {
         matchingRegistered?.phone ||
         "",
       role: resolvedRole,
+      rol: resolvedRole,
     };
 
     await clearFinalSessions();

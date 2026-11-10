@@ -10,7 +10,6 @@ function isProtectedPath(pathname: string): boolean {
     clean.startsWith("/inquilino/profileinquilino") ||
     clean.startsWith("/inquilino/reservapage") ||
     clean.startsWith("/inquilino/detallesreservapage") ||
-    clean.startsWith("/inquilino/explorarpage") ||
     clean.startsWith("/arrendatario")
   );
 }

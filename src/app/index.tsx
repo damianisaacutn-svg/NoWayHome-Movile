@@ -1,4 +1,4 @@
-import { useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   DollarSign,
@@ -11,7 +11,7 @@ import {
   Users,
   X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { useCallback, useRef, useState, type ReactElement } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,8 @@ import { API_BASE_URL } from "@/config/api";
 // usando el alias `@/components/header` para reutilizarlo en cualquier pantalla.
 // ============================================================================
 import { Header } from "@/components/header";
+import { authService } from "@/services/authService";
+import { getStoredSessionUser, resolveUserRole } from "@/utils/sessionRole";
 import {
   propiedadController,
   type PropiedadImagenItem,
@@ -71,8 +73,7 @@ function getPropertyTitle(prop: PropiedadItem): string {
 function getPropertyLocation(prop: PropiedadItem): string {
   return (
     prop.ubicacion ||
-    prop.direccion ||
-    prop.ciudad ||
+    [prop.direccion, prop.ciudad, prop.pais].filter(Boolean).join(", ") ||
     prop.location ||
     prop.address ||
     prop.city ||
@@ -82,7 +83,8 @@ function getPropertyLocation(prop: PropiedadItem): string {
 
 function getPropertyPrice(prop: PropiedadItem): number {
   return parseNumericValue(
-    prop.precio_noche ??
+    (prop as Record<string, any>).precio_por_noche ??
+      prop.precio_noche ??
       prop.precio ??
       prop.costo ??
       prop.pricePerNight ??
@@ -177,36 +179,41 @@ export default function HomePage(): ReactElement {
     );
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
+  const hasLoadedCatalogRef = useRef(false);
 
-    const init = async (): Promise<void> => {
-      try {
-        const data = await cargarCatalogo();
-        if (isMounted) {
-          setPropiedades(data);
-          setError(null);
-        }
-      } catch (err: unknown) {
-        if (isMounted) {
-          const message =
-            err instanceof Error && err.message
-              ? err.message
-              : "Error al conectar con el servidor.";
-          setError(message);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    void init();
-    return () => {
-      isMounted = false;
-    };
-  }, [cargarCatalogo]);
+      const refreshCatalog = async (): Promise<void> => {
+        try {
+          const data = await cargarCatalogo();
+          if (isMounted) {
+            hasLoadedCatalogRef.current = true;
+            setPropiedades(data);
+            setError(null);
+          }
+        } catch (err: unknown) {
+          if (isMounted && !hasLoadedCatalogRef.current) {
+            const message =
+              err instanceof Error && err.message
+                ? err.message
+                : "Error al conectar con el servidor.";
+            setError(message);
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      void refreshCatalog();
+      return () => {
+        isMounted = false;
+      };
+    }, [cargarCatalogo]),
+  );
 
   const handleRecargar = async (refresh = false): Promise<void> => {
     try {
@@ -292,7 +299,32 @@ export default function HomePage(): ReactElement {
     );
   };
 
+  const handleHostCta = (): void => {
+    const session = authService.getSession();
+    const storedUser = getStoredSessionUser();
+    if (
+      session?.isAuthenticated &&
+      storedUser &&
+      resolveUserRole(storedUser, session?.role) === "arrendatario"
+    ) {
+      router.push("/arrendatario/crearPropiedad" as Href);
+      return;
+    }
+    router.push("/registerPage" as Href);
+  };
+
   const handleNavigateRegister = (): void => {
+    const session = authService.getSession();
+    const storedUser = getStoredSessionUser();
+    if (session?.isAuthenticated && storedUser) {
+      const role = resolveUserRole(storedUser, session?.role);
+      router.push(
+        (role === "arrendatario"
+          ? "/arrendatario/profileArrendatario"
+          : "/inquilino/ExplorarPage") as Href,
+      );
+      return;
+    }
     router.push("/registerPage" as Href);
   };
 
@@ -377,7 +409,7 @@ export default function HomePage(): ReactElement {
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={handleNavigateRegister}
+              onPress={handleHostCta}
               className="bg-white/90 px-4 py-2 rounded-full border border-brand/20"
             >
               <Text className="text-brown text-xs font-bold">
@@ -629,7 +661,12 @@ export default function HomePage(): ReactElement {
                                 {formatPrice(precio)}
                               </Text>
                               <Text className="text-xs font-medium text-dark/60 ml-1">
-                                / noche
+                                {String(
+                                  (prop as Record<string, any>).tipo_precio ||
+                                    "",
+                                ).toLowerCase() === "mensual"
+                                  ? "/ mes"
+                                  : "/ noche"}
                               </Text>
                             </View>
 

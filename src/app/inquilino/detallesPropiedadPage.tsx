@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   ArrowLeft,
@@ -10,8 +10,9 @@ import {
   Star,
   Users,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -27,10 +28,17 @@ import {
   type PropiedadImagenItem,
   type PropiedadItem,
 } from "@/controllers/propiedadController";
-import { AlertMessage } from "./components/AlertMessage";
-import { HeaderInquilino } from "./components/headerInquilino";
-import { LoadingState } from "./components/LoadingState";
-import { PropertyLocationMap } from "./components/locacionPropiedadMap";
+import { authService } from "@/services/authService";
+import {
+  getStoredSessionUser,
+  getTenantId,
+  resolveUserRole,
+} from "@/utils/sessionRole";
+import { AlertMessage } from "../../components/AlertMessage";
+import { HeaderArrendatario } from "../../components/headerArrendatario";
+import { HeaderInquilino } from "../../components/headerInquilino";
+import { LoadingState } from "../../components/LoadingState";
+import { PropertyLocationMap } from "../../components/locacionPropiedadMap";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function resolveImageUri(raw: unknown): string | null {
@@ -58,51 +66,76 @@ export function PropertyDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [imagenActual, setImagenActual] = useState(0);
+  const [isStrictLandlord, setIsStrictLandlord] = useState<boolean>(() => {
+    const session = authService.getSession();
+    const storedUser = getStoredSessionUser();
+    if (!session?.isAuthenticated || !storedUser) return false;
+    return (
+      resolveUserRole(storedUser, session?.role) === "arrendatario" &&
+      !getTenantId(storedUser, session?.role)
+    );
+  });
 
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchPropiedad = async () => {
-      if (!id) {
-        if (isMounted) {
-          setError("ID de propiedad no válido.");
-          setIsLoading(false);
-        }
+    const unsubscribe = authService.subscribe((nextSession) => {
+      if (!nextSession?.isAuthenticated) {
+        setIsStrictLandlord(false);
         return;
       }
+      const storedUser = getStoredSessionUser();
+      setIsStrictLandlord(
+        resolveUserRole(storedUser, nextSession?.role) === "arrendatario" &&
+          !getTenantId(storedUser, nextSession?.role),
+      );
+    });
+    return unsubscribe;
+  }, []);
 
-      try {
-        setError("");
-        setIsLoading(true);
-        const result = await propiedadController.cargarDetallesPropiedad(id);
-        if (!isMounted) return;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-        if (result.success && result.data) {
-          setPropiedad(result.data);
-          setImagenActual(0);
-        } else {
-          setError(result.error || "No se pudo cargar la propiedad.");
+      const fetchPropiedad = async () => {
+        if (!id) {
+          if (isMounted) {
+            setError("ID de propiedad no válido.");
+            setIsLoading(false);
+          }
+          return;
         }
-      } catch (loadError: unknown) {
-        if (!isMounted) return;
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "No se pudo cargar la propiedad.",
-        );
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
+
+        try {
+          setError("");
+          const result = await propiedadController.cargarDetallesPropiedad(id);
+          if (!isMounted) return;
+
+          if (result.success && result.data) {
+            setPropiedad(result.data);
+            setImagenActual(0);
+          } else {
+            setError(result.error || "No se pudo cargar la propiedad.");
+          }
+        } catch (loadError: unknown) {
+          if (!isMounted) return;
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "No se pudo cargar la propiedad.",
+          );
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+          }
         }
-      }
-    };
+      };
 
-    void fetchPropiedad();
+      void fetchPropiedad();
 
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+      return () => {
+        isMounted = false;
+      };
+    }, [id]),
+  );
 
   const galleryUrls = useMemo<string[]>(() => {
     if (!propiedad) return [PLACEHOLDER_PROPERTY_IMAGE];
@@ -154,6 +187,8 @@ export function PropertyDetailPage() {
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
+    } else if (isStrictLandlord) {
+      router.replace("/" as any);
     } else {
       router.push("/inquilino/ExplorarPage" as any);
     }
@@ -166,7 +201,7 @@ export function PropertyDetailPage() {
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
-        <HeaderInquilino />
+        {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center">
           <LoadingState message="Cargando propiedad..." />
         </View>
@@ -181,7 +216,7 @@ export function PropertyDetailPage() {
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
-        <HeaderInquilino />
+        {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
         <View className="flex-1 bg-[#FAFAFA] px-4 py-8 justify-center items-center">
           {error ? (
             <AlertMessage
@@ -201,11 +236,19 @@ export function PropertyDetailPage() {
               reservar.
             </Text>
             <TouchableOpacity
-              onPress={() => router.push("/inquilino/ExplorarPage" as any)}
+              onPress={() =>
+                router.push(
+                  (isStrictLandlord
+                    ? "/arrendatario/profileArrendatario"
+                    : "/inquilino/ExplorarPage") as any,
+                )
+              }
               className="w-full rounded-xl bg-[#6B8E23] px-4 py-3.5 items-center"
             >
               <Text className="text-white font-semibold text-base">
-                Explorar otras propiedades
+                {isStrictLandlord
+                  ? "Volver a mi panel"
+                  : "Explorar otras propiedades"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -224,8 +267,9 @@ export function PropertyDetailPage() {
     "Propiedad";
   const location =
     propiedad.ubicacion ||
-    propiedad.direccion ||
-    propiedad.ciudad ||
+    [propiedad.direccion, propiedad.ciudad, propiedad.pais]
+      .filter(Boolean)
+      .join(", ") ||
     propiedad.location ||
     "Ubicación desconocida";
   const price =
@@ -248,10 +292,57 @@ export function PropertyDetailPage() {
     propiedad.id_propiedad ?? propiedad.id ?? id ?? "",
   );
 
+  const handleReservePress = () => {
+    const session = authService.getSession();
+    const storedUser = getStoredSessionUser();
+
+    if (!session?.isAuthenticated || !storedUser) {
+      Alert.alert(
+        "Inicia sesión para reservar",
+        "Necesitas iniciar sesión con una cuenta de huésped para solicitar una reserva.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Iniciar sesión",
+            onPress: () => router.push("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
+
+    const role = resolveUserRole(storedUser, session?.role);
+    const tenantId = getTenantId(storedUser, session?.role);
+    if (role === "arrendatario" && !tenantId) {
+      Alert.alert(
+        "Modo Anfitrión",
+        "Has iniciado sesión como anfitrión. Para realizar reservas debes usar una cuenta de huésped.",
+        [
+          { text: "Volver", style: "cancel" },
+          {
+            text: "Mi panel anfitrión",
+            onPress: () =>
+              router.push("/arrendatario/profileArrendatario" as any),
+          },
+          {
+            text: "Cambiar cuenta",
+            onPress: () => router.push("/loginPage" as any),
+          },
+        ],
+      );
+      return;
+    }
+
+    router.push({
+      pathname: "/inquilino/ReservaPage" as any,
+      params: { id: resolvedPropertyId },
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
-      <HeaderInquilino />
+      {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
 
       <ScrollView
         className="flex-1 bg-[#FAFAFA]"
@@ -265,7 +356,7 @@ export function PropertyDetailPage() {
           >
             <ArrowLeft size={20} color="#A67C52" />
             <Text className="ml-2 text-sm font-medium text-[#5F5F5F]">
-              Volver al catálogo
+              {isStrictLandlord ? "Volver" : "Volver al catálogo"}
             </Text>
           </TouchableOpacity>
 
@@ -466,7 +557,13 @@ export function PropertyDetailPage() {
             <Text className="font-poppins text-2xl font-bold text-[#6B8E23]">
               {formatPrice(price)}
             </Text>
-            <Text className="text-sm text-[#5F5F5F]/80">/ noche</Text>
+            <Text className="text-sm text-[#5F5F5F]/80">
+              {String(
+                (propiedad as Record<string, any>).tipo_precio || "",
+              ).toLowerCase() === "mensual"
+                ? "/ mes"
+                : "/ noche"}
+            </Text>
           </View>
           <Text className="text-xs font-medium uppercase text-[#A67C52] mt-1">
             {propiedad.estado || "Disponible"}
@@ -475,12 +572,7 @@ export function PropertyDetailPage() {
 
         <TouchableOpacity
           activeOpacity={0.85}
-          onPress={() =>
-            router.push({
-              pathname: "/inquilino/ReservaPage" as any,
-              params: { id: resolvedPropertyId },
-            })
-          }
+          onPress={handleReservePress}
           className="bg-[#6B8E23] rounded-xl px-7 py-3.5 items-center justify-center shadow-sm"
         >
           <Text className="text-white font-semibold text-base">Reservar</Text>

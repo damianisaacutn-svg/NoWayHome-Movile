@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   AlertCircle,
@@ -36,13 +36,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/config/api";
 import { authController } from "../../controllers/authController";
 import { authService } from "@/services/authService";
+import {
+  getLandlordId,
+  getStoredSessionUser as getSessionUserFromStorage,
+  resolveUserRole,
+} from "@/utils/sessionRole";
 import { landlordBookingService } from "@/services/landlordBookingService";
 import {
   getLandlordProfile,
   updateLandlordProfile,
 } from "@/services/landlordProfileService";
 import { getLandlordProperties } from "@/services/propertyService";
-import { HeaderArrendatario } from "./components/headerArrendatario";
+import { HeaderArrendatario } from "../../components/headerArrendatario";
 
 export interface LandlordProfileData {
   id?: number | string;
@@ -105,22 +110,6 @@ function resolvePropertyImageUri(rawImage?: string | null): string | null {
   }
   const normalizedPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${API_BASE_URL}${normalizedPath}`;
-}
-
-function getStoredSessionUser(): LandlordProfileData | null {
-  const session = authService.getSession();
-  if (session?.user && typeof session.user === "object") {
-    return session.user as LandlordProfileData;
-  }
-  const rawStoredUser = authService.getStorageItem("user");
-  if (rawStoredUser) {
-    try {
-      return JSON.parse(rawStoredUser) as LandlordProfileData;
-    } catch {
-      return null;
-    }
-  }
-  return null;
 }
 
 interface ConfirmActionModalProps {
@@ -365,7 +354,9 @@ export function PerfilArrendatario({
 }: PerfilArrendatarioProps = {}) {
   const router = useRouter();
   const [sessionUser, setSessionUser] = useState<LandlordProfileData | null>(
-    () => userData || getStoredSessionUser(),
+    () =>
+      userData ||
+      (getSessionUserFromStorage() as LandlordProfileData | null),
   );
 
   const effectiveUserData = useMemo(() => {
@@ -423,6 +414,13 @@ export function PerfilArrendatario({
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshTrigger((prev) => prev + 1);
+    }, []),
+  );
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
@@ -439,14 +437,32 @@ export function PerfilArrendatario({
     return unsubscribe;
   }, [router]);
 
+  const resolvedRole = useMemo(
+    () => resolveUserRole(effectiveUserData),
+    [effectiveUserData],
+  );
+
   const idArrendatario = useMemo(() => {
     return (
-      effectiveUserData?.id_arrendatario ??
-      effectiveUserData?.id ??
-      fetchedProfile?.id_arrendatario ??
-      fetchedProfile?.id
+      getLandlordId(effectiveUserData) ?? getLandlordId(fetchedProfile)
     );
   }, [effectiveUserData, fetchedProfile]);
+
+  const isAuthorizedLandlord = Boolean(
+    effectiveUserData &&
+      (resolvedRole === "arrendatario" ||
+        Boolean(effectiveUserData?.id_arrendatario)) &&
+      idArrendatario,
+  );
+
+  useEffect(() => {
+    if (!authService.isAuthenticated() || !effectiveUserData) {
+      return;
+    }
+    if (!isAuthorizedLandlord) {
+      router.replace("/inquilino/profileInquilino" as any);
+    }
+  }, [effectiveUserData, isAuthorizedLandlord, router]);
 
   const showActionMessage = useCallback(
     (
@@ -472,7 +488,7 @@ export function PerfilArrendatario({
       }
       const currentUser =
         (currentSession?.user as LandlordProfileData) ||
-        getStoredSessionUser() ||
+        (getSessionUserFromStorage() as LandlordProfileData | null) ||
         {};
       const mergedUser: LandlordProfileData = {
         ...currentUser,
@@ -483,6 +499,7 @@ export function PerfilArrendatario({
           currentUser?.id_arrendatario ??
           currentUser?.id,
         role: "arrendatario",
+        rol: "arrendatario",
       };
 
       authService.setStorageItem("user", JSON.stringify(mergedUser));
@@ -497,7 +514,7 @@ export function PerfilArrendatario({
   );
 
   useEffect(() => {
-    if (!idArrendatario) {
+    if (!isAuthorizedLandlord || !idArrendatario) {
       return;
     }
 
@@ -529,22 +546,22 @@ export function PerfilArrendatario({
     return () => {
       isMounted = false;
     };
-  }, [idArrendatario, onUserUpdate, showActionMessage, syncUserInSession]);
+  }, [
+    idArrendatario,
+    isAuthorizedLandlord,
+    onUserUpdate,
+    showActionMessage,
+    syncUserInSession,
+  ]);
 
   useEffect(() => {
+    if (!isAuthorizedLandlord || !idArrendatario) {
+      return;
+    }
+
     let isMounted = true;
 
     async function loadRecentProperties() {
-      if (!idArrendatario) {
-        if (isMounted) {
-          setIsLoadingProperties(false);
-          setPropertiesError(
-            "No se pudo identificar tu cuenta de arrendatario.",
-          );
-        }
-        return;
-      }
-
       try {
         setIsLoadingProperties(true);
         setPropertiesError("");
@@ -568,9 +585,13 @@ export function PerfilArrendatario({
     return () => {
       isMounted = false;
     };
-  }, [idArrendatario]);
+  }, [idArrendatario, isAuthorizedLandlord, refreshTrigger]);
 
   useEffect(() => {
+    if (!isAuthorizedLandlord || !idArrendatario) {
+      return;
+    }
+
     let isMounted = true;
 
     async function loadReservationStats() {
@@ -642,7 +663,7 @@ export function PerfilArrendatario({
     return () => {
       isMounted = false;
     };
-  }, [idArrendatario]);
+  }, [idArrendatario, isAuthorizedLandlord, refreshTrigger]);
 
   const getInitials = (name?: string) => {
     if (!name) return "US";
@@ -774,6 +795,10 @@ export function PerfilArrendatario({
       <Text className="mt-1 text-sm text-red-700">{editErrors[field]}</Text>
     );
   };
+
+  if (!isAuthorizedLandlord) {
+    return null;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
@@ -913,11 +938,7 @@ export function PerfilArrendatario({
                 <View className="flex-col gap-3">
                   <TouchableOpacity
                     onPress={() =>
-                      showActionMessage(
-                        "info",
-                        "La vista completa de propiedades estará disponible próximamente.",
-                        "Mis propiedades",
-                      )
+                      router.push("/arrendatario/MisPropiedades" as any)
                     }
                     className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
                   >
@@ -927,11 +948,7 @@ export function PerfilArrendatario({
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() =>
-                      showActionMessage(
-                        "info",
-                        "El registro de nuevas propiedades estará disponible próximamente.",
-                        "Agregar propiedad",
-                      )
+                      router.push("/arrendatario/crearPropiedad" as any)
                     }
                     className="bg-[#6B8E23] rounded-xl py-3 flex-row items-center justify-center gap-2"
                   >
@@ -962,11 +979,7 @@ export function PerfilArrendatario({
                     </Text>
                     <TouchableOpacity
                       onPress={() =>
-                        showActionMessage(
-                          "info",
-                          "El registro de nuevas propiedades estará disponible próximamente.",
-                          "Agregar propiedad",
-                        )
+                        router.push("/arrendatario/crearPropiedad" as any)
                       }
                       className="bg-[#6B8E23] rounded-xl py-3 px-6 flex-row items-center gap-2"
                     >
@@ -986,13 +999,25 @@ export function PerfilArrendatario({
                       const imageUri = resolvePropertyImageUri(
                         property.imagen_principal,
                       );
-                      const propKey = String(
-                        property.id_propiedad ?? property.id ?? `prop-${index}`,
-                      );
+                      const propId = property.id_propiedad ?? property.id;
+                      const propKey = String(propId ?? `prop-${index}`);
 
                       return (
-                        <View
+                        <TouchableOpacity
                           key={propKey}
+                          activeOpacity={0.85}
+                          onPress={() => {
+                            if (propId !== undefined && propId !== null) {
+                              router.push({
+                                pathname: "/arrendatario/EditarPropiedad",
+                                params: { id: String(propId) },
+                              } as any);
+                            } else {
+                              router.push(
+                                "/arrendatario/MisPropiedades" as any,
+                              );
+                            }
+                          }}
                           className="overflow-hidden bg-white border border-[#6B8E23]/10 rounded-2xl"
                         >
                           {imageUri ? (
@@ -1036,11 +1061,19 @@ export function PerfilArrendatario({
                                 </Text>
                               </View>
                             </View>
-                            <Text className="font-poppins text-sm font-semibold text-[#6B8E23]">
-                              {formatPrice(property)}
-                            </Text>
+                            <View className="flex-row items-center justify-between">
+                              <Text className="font-poppins text-sm font-semibold text-[#6B8E23]">
+                                {formatPrice(property)}
+                              </Text>
+                              <View className="flex-row items-center gap-1">
+                                <Edit size={13} color="#6B8E23" />
+                                <Text className="text-xs font-medium text-[#6B8E23]">
+                                  Editar
+                                </Text>
+                              </View>
+                            </View>
                           </View>
-                        </View>
+                        </TouchableOpacity>
                       );
                     })}
                   </View>
@@ -1072,11 +1105,7 @@ export function PerfilArrendatario({
               </Text>
               <TouchableOpacity
                 onPress={() =>
-                  showActionMessage(
-                    "info",
-                    "El listado detallado de reservas estará disponible próximamente.",
-                    "Reservas recibidas",
-                  )
+                  router.push("/arrendatario/ReservasArrendatario" as any)
                 }
                 className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
               >
@@ -1186,14 +1215,6 @@ export function PerfilArrendatario({
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push("/" as any)}
-                className="border-2 border-[#6B8E23] rounded-xl py-3 items-center w-full"
-              >
-                <Text className="text-[#6B8E23] font-medium">
-                  Ver catálogo como huésped
-                </Text>
-              </TouchableOpacity>
             </View>
 
             <View className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl flex-col gap-8">
