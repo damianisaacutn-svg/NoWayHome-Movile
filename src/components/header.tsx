@@ -39,7 +39,9 @@ export function Header() {
     (session?.user as any)?.role === "arrendatario" ||
     (session?.user as any)?.rol === "arrendatario" ||
     Boolean((session?.user as any)?.id_arrendatario);
-  const profileRoute = isArrendatario ? "/arrendatario/profileArrendatario" : "/";
+  const profileRoute = isArrendatario
+    ? "/arrendatario/profileArrendatario"
+    : "/inquilino/profileInquilino";
   const isLoginRoute =
     pathname === "/loginPage" || pathname === "/loginpage";
 

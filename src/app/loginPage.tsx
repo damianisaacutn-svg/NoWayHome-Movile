@@ -39,6 +39,8 @@ function detectarRolUsuario(
   const userObj =
     resultOrUser?.user ||
     resultOrUser?.usuario ||
+    resultOrUser?.inquilino ||
+    resultOrUser?.arrendatario ||
     resultOrUser?.data ||
     resultOrUser?.profile ||
     resultOrUser ||
@@ -55,6 +57,15 @@ function detectarRolUsuario(
   )
     .trim()
     .toLowerCase();
+
+  if (
+    rawRole === "inquilino" ||
+    rawRole === "guest" ||
+    rawRole === "huesped" ||
+    rawRole === "huésped"
+  ) {
+    return "inquilino";
+  }
 
   if (
     rawRole === "arrendatario" ||
@@ -85,6 +96,7 @@ export default function LoginPage() {
   const [step, setStep] = useState<"credentials" | "verify">("credentials");
   const [verificationCode, setVerificationCode] = useState("");
   const [pendingRole, setPendingRole] = useState("");
+  const [pendingUser, setPendingUser] = useState<any>(null);
   const [registeredFallback, setRegisteredFallback] = useState<any>(null);
 
   useEffect(() => {
@@ -113,6 +125,7 @@ export default function LoginPage() {
 
         setEmail(pending.email);
         setPendingRole(pending.role);
+        setPendingUser(pending.user || null);
         setStep("verify");
       } catch {
         authService.removeStorageItem(PENDING_2FA_KEY);
@@ -139,8 +152,8 @@ export default function LoginPage() {
       return;
     }
 
-    // Perfil de Inquilino / Huésped -> Redirige al inicio (catálogo)
-    router.replace("/" as any);
+    // Perfil de Inquilino / Huésped -> Redirige a su perfil de inquilino
+    router.replace("/inquilino/profileInquilino" as any);
   };
 
   // Guarda la sesión normalizada en authService y redirige según el rol
@@ -160,13 +173,20 @@ export default function LoginPage() {
       fallbackRole || matchingRegistered?.role || "inquilino",
     );
 
-    const rawUser =
+    const rawUserFromPayload =
       resultPayload?.user ||
       resultPayload?.usuario ||
+      resultPayload?.inquilino ||
+      resultPayload?.arrendatario ||
       resultPayload?.data ||
       resultPayload?.profile ||
       resultPayload ||
       {};
+
+    const rawUser = {
+      ...(pendingUser || {}),
+      ...rawUserFromPayload,
+    };
 
     const normalizedUser = {
       ...matchingRegistered,
@@ -175,12 +195,14 @@ export default function LoginPage() {
         rawUser.id ??
         rawUser.id_inquilino ??
         rawUser.id_arrendatario ??
+        rawUser.id_usuario ??
         resultPayload?.id ??
         matchingRegistered?.id,
       id_inquilino:
         resolvedRole === "inquilino"
           ? (rawUser.id_inquilino ??
             rawUser.id ??
+            rawUser.id_usuario ??
             resultPayload?.id_inquilino ??
             resultPayload?.id ??
             matchingRegistered?.id_inquilino ??
@@ -190,6 +212,7 @@ export default function LoginPage() {
         resolvedRole === "arrendatario"
           ? (rawUser.id_arrendatario ??
             rawUser.id ??
+            rawUser.id_usuario ??
             resultPayload?.id_arrendatario ??
             resultPayload?.id ??
             matchingRegistered?.id_arrendatario ??
@@ -248,18 +271,33 @@ export default function LoginPage() {
 
         const loginResult = await authController.login(cleanEmail, password);
 
+        const matchingRegistered =
+          registeredFallback &&
+          String(registeredFallback.email || "").toLowerCase() === cleanEmail
+            ? registeredFallback
+            : null;
+
         // Caso 1: El backend solicita verificación en 2 pasos (2FA)
         if (loginResult.success && loginResult.requires2FA) {
           const detectedRole = detectarRolUsuario(
             loginResult,
-            registeredFallback?.role || "inquilino",
+            matchingRegistered?.role || "inquilino",
           );
+          const partialUser =
+            loginResult?.user ||
+            loginResult?.usuario ||
+            (loginResult as any)?.inquilino ||
+            (loginResult as any)?.arrendatario ||
+            loginResult?.data ||
+            null;
           setPendingRole(detectedRole);
+          setPendingUser(partialUser);
           authService.setStorageItem(
             PENDING_2FA_KEY,
             JSON.stringify({
               email: cleanEmail,
               role: detectedRole,
+              user: partialUser,
               createdAt: Date.now(),
             }),
           );
