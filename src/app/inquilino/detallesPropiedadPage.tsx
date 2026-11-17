@@ -35,6 +35,7 @@ import {
   resolveUserRole,
 } from "@/utils/sessionRole";
 import { AlertMessage } from "../../components/AlertMessage";
+import { Header } from "../../components/header";
 import { HeaderArrendatario } from "../../components/headerArrendatario";
 import { HeaderInquilino } from "../../components/headerInquilino";
 import { LoadingState } from "../../components/LoadingState";
@@ -59,37 +60,97 @@ function resolveImageUri(raw: unknown): string | null {
 
 export function PropertyDetailPage() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    from?: string | string[];
+    soloInfo?: string | string[];
+  }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const fromParam = String(
+    Array.isArray(params.from) ? params.from[0] : params.from || "",
+  )
+    .trim()
+    .toLowerCase();
+  const soloInfoParam = String(
+    Array.isArray(params.soloInfo) ? params.soloInfo[0] : params.soloInfo || "",
+  )
+    .trim()
+    .toLowerCase();
+  const isFromIndex =
+    fromParam === "index" ||
+    soloInfoParam === "true" ||
+    soloInfoParam === "1";
 
   const [propiedad, setPropiedad] = useState<PropiedadItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [imagenActual, setImagenActual] = useState(0);
-  const [isStrictLandlord, setIsStrictLandlord] = useState<boolean>(() => {
+  const [authState, setAuthState] = useState<{
+    isAuthenticated: boolean;
+    isStrictLandlord: boolean;
+    isTenant: boolean;
+  }>(() => {
     const session = authService.getSession();
     const storedUser = getStoredSessionUser();
-    if (!session?.isAuthenticated || !storedUser) return false;
-    return (
-      resolveUserRole(storedUser, session?.role) === "arrendatario" &&
-      !getTenantId(storedUser, session?.role)
-    );
+    if (!session?.isAuthenticated || !storedUser) {
+      return {
+        isAuthenticated: false,
+        isStrictLandlord: false,
+        isTenant: false,
+      };
+    }
+    const role = resolveUserRole(storedUser, session?.role);
+    const tenantId = getTenantId(storedUser, session?.role);
+    return {
+      isAuthenticated: true,
+      isStrictLandlord: role === "arrendatario" && !tenantId,
+      isTenant: role === "inquilino" || Boolean(tenantId),
+    };
   });
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
       if (!nextSession?.isAuthenticated) {
-        setIsStrictLandlord(false);
+        setAuthState({
+          isAuthenticated: false,
+          isStrictLandlord: false,
+          isTenant: false,
+        });
         return;
       }
       const storedUser = getStoredSessionUser();
-      setIsStrictLandlord(
-        resolveUserRole(storedUser, nextSession?.role) === "arrendatario" &&
-          !getTenantId(storedUser, nextSession?.role),
-      );
+      if (!storedUser) {
+        setAuthState({
+          isAuthenticated: false,
+          isStrictLandlord: false,
+          isTenant: false,
+        });
+        return;
+      }
+      const role = resolveUserRole(storedUser, nextSession?.role);
+      const tenantId = getTenantId(storedUser, nextSession?.role);
+      setAuthState({
+        isAuthenticated: true,
+        isStrictLandlord: role === "arrendatario" && !tenantId,
+        isTenant: role === "inquilino" || Boolean(tenantId),
+      });
     });
     return unsubscribe;
   }, []);
+
+  const isStrictLandlord = authState.isStrictLandlord;
+  const isInfoOnly =
+    isFromIndex || !authState.isAuthenticated || !authState.isTenant || isStrictLandlord;
+
+  const renderHeader = () => {
+    if (isFromIndex || !authState.isAuthenticated) {
+      return <Header />;
+    }
+    if (isStrictLandlord) {
+      return <HeaderArrendatario />;
+    }
+    return <HeaderInquilino />;
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -187,7 +248,7 @@ export function PropertyDetailPage() {
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
-    } else if (isStrictLandlord) {
+    } else if (isFromIndex || !authState.isAuthenticated || isStrictLandlord) {
       router.replace("/" as any);
     } else {
       router.push("/inquilino/ExplorarPage" as any);
@@ -201,7 +262,7 @@ export function PropertyDetailPage() {
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
-        {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
+        {renderHeader()}
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center">
           <LoadingState message="Cargando propiedad..." />
         </View>
@@ -216,7 +277,7 @@ export function PropertyDetailPage() {
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
-        {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
+        {renderHeader()}
         <View className="flex-1 bg-[#FAFAFA] px-4 py-8 justify-center items-center">
           {error ? (
             <AlertMessage
@@ -232,23 +293,27 @@ export function PropertyDetailPage() {
               Propiedad no disponible
             </Text>
             <Text className="text-[#5F5F5F]/70 text-center mb-6">
-              La propiedad solicitada no existe o no está disponible para
-              reservar.
+              La propiedad solicitada no existe o no se encuentra disponible en
+              este momento.
             </Text>
             <TouchableOpacity
               onPress={() =>
                 router.push(
-                  (isStrictLandlord
-                    ? "/arrendatario/profileArrendatario"
-                    : "/inquilino/ExplorarPage") as any,
+                  (isFromIndex || !authState.isAuthenticated
+                    ? "/"
+                    : isStrictLandlord
+                      ? "/arrendatario/profileArrendatario"
+                      : "/inquilino/ExplorarPage") as any,
                 )
               }
               className="w-full rounded-xl bg-[#6B8E23] px-4 py-3.5 items-center"
             >
               <Text className="text-white font-semibold text-base">
-                {isStrictLandlord
-                  ? "Volver a mi panel"
-                  : "Explorar otras propiedades"}
+                {isFromIndex || !authState.isAuthenticated
+                  ? "Volver al inicio"
+                  : isStrictLandlord
+                    ? "Volver a mi panel"
+                    : "Explorar otras propiedades"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -293,6 +358,10 @@ export function PropertyDetailPage() {
   );
 
   const handleReservePress = () => {
+    if (isInfoOnly) {
+      return;
+    }
+
     const session = authService.getSession();
     const storedUser = getStoredSessionUser();
 
@@ -342,7 +411,7 @@ export function PropertyDetailPage() {
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
-      {isStrictLandlord ? <HeaderArrendatario /> : <HeaderInquilino />}
+      {renderHeader()}
 
       <ScrollView
         className="flex-1 bg-[#FAFAFA]"
@@ -356,7 +425,11 @@ export function PropertyDetailPage() {
           >
             <ArrowLeft size={20} color="#A67C52" />
             <Text className="ml-2 text-sm font-medium text-[#5F5F5F]">
-              {isStrictLandlord ? "Volver" : "Volver al catálogo"}
+              {isFromIndex || !authState.isAuthenticated
+                ? "Volver al inicio"
+                : isStrictLandlord
+                  ? "Volver"
+                  : "Volver al catálogo"}
             </Text>
           </TouchableOpacity>
 
@@ -451,10 +524,12 @@ export function PropertyDetailPage() {
           {/* Tarjeta de Detalles */}
           <View className="bg-white rounded-2xl p-6 border border-[#6B8E23]/10 shadow-sm mb-6">
             <Text className="text-sm text-[#5F5F5F]/70 mb-1">
-              Reserva esta propiedad
+              {isInfoOnly ? "Ficha informativa" : "Reserva esta propiedad"}
             </Text>
             <Text className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-5">
-              Prepárate para tu estancia
+              {isInfoOnly
+                ? "Información del alojamiento"
+                : "Prepárate para tu estancia"}
             </Text>
 
             {(hasValue(capacidadVal) ||
@@ -537,11 +612,14 @@ export function PropertyDetailPage() {
           {/* Información Importante */}
           <View className="rounded-xl bg-[#F2E8CF]/60 p-4 mb-2 border border-[#A67C52]/15">
             <Text className="font-semibold text-[#5F5F5F] mb-1">
-              Información importante
+              {isInfoOnly
+                ? "Información del alojamiento"
+                : "Información importante"}
             </Text>
             <Text className="text-sm text-[#5F5F5F]/80 leading-relaxed">
-              Tu reserva será registrada y podrás consultarla desde tu perfil.
-              Se confirmará conforme a disponibilidad del anfitrión.
+              {isInfoOnly
+                ? "Esta vista es únicamente informativa. Aquí puedes consultar las características, ubicación en el mapa y descripción general de esta propiedad verificada en No Way Home."
+                : "Tu reserva será registrada y podrás consultarla desde tu perfil. Se confirmará conforme a disponibilidad del anfitrión."}
             </Text>
           </View>
         </View>
@@ -570,13 +648,21 @@ export function PropertyDetailPage() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={handleReservePress}
-          className="bg-[#6B8E23] rounded-xl px-7 py-3.5 items-center justify-center shadow-sm"
-        >
-          <Text className="text-white font-semibold text-base">Reservar</Text>
-        </TouchableOpacity>
+        {isInfoOnly ? (
+          <View className="bg-[#F2E8CF] rounded-xl px-4 py-2.5 items-center justify-center border border-[#A67C52]/20">
+            <Text className="text-[#A67C52] font-semibold text-xs uppercase tracking-wider">
+              Solo información
+            </Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleReservePress}
+            className="bg-[#6B8E23] rounded-xl px-7 py-3.5 items-center justify-center shadow-sm"
+          >
+            <Text className="text-white font-semibold text-base">Reservar</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );

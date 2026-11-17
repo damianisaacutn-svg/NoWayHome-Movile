@@ -81,7 +81,13 @@ export const authController = {
         response.success === true ||
         Boolean(response.requires2FA) ||
         Boolean(response.token || response.accessToken) ||
-        Boolean(response.user || response.usuario);
+        Boolean(
+          response.user ||
+            response.usuario ||
+            response.arrendatario ||
+            response.inquilino ||
+            response.data,
+        );
 
       return {
         ...response,
@@ -129,7 +135,13 @@ export const authController = {
       const isSuccess =
         response.success === true ||
         Boolean(response.token || response.accessToken) ||
-        Boolean(response.user || response.usuario);
+        Boolean(
+          response.user ||
+            response.usuario ||
+            response.arrendatario ||
+            response.inquilino ||
+            response.data,
+        );
 
       return {
         ...response,

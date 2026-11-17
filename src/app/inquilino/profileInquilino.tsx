@@ -16,7 +16,13 @@ import {
   Star,
   X,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -34,10 +40,15 @@ import { API_URL } from "@/config/api";
 import { authController } from "../../controllers/authController";
 import { inquilinoController } from "@/controllers/inquilinoController";
 import { authService } from "@/services/authService";
+import { mostrarNotificacionLocal } from "@/services/localNotificationService";
 import { tenantBookingService } from "@/services/tenantBookingService";
+import { parseDateOnly } from "@/utils/dateUtils";
 import {
+  getLandlordId,
   getStoredSessionUser as getSessionUserFromStorage,
   getTenantId,
+  hasValidId,
+  pickValidId,
   resolveUserRole,
 } from "@/utils/sessionRole";
 import { HeaderInquilino } from "../../components/headerInquilino";
@@ -64,7 +75,7 @@ function buildEndpointUrl(path: string): string {
 
 function formatDateLong(rawDate?: string | null): string {
   if (!rawDate) return "Fecha por confirmar";
-  const parsed = new Date(rawDate);
+  const parsed = parseDateOnly(rawDate) || new Date(rawDate);
   if (Number.isNaN(parsed.getTime())) {
     return String(rawDate);
   }
@@ -555,6 +566,9 @@ export function ProfilePage() {
   const [sessionUser, setSessionUser] = useState<TenantProfileData | null>(
     () => getSessionUserFromStorage() as TenantProfileData | null,
   );
+  const [sessionRole, setSessionRole] = useState<string | null>(
+    () => authService.getSession()?.role ?? null,
+  );
   const [fetchedProfile, setFetchedProfile] =
     useState<TenantProfileData | null>(null);
 
@@ -586,9 +600,14 @@ export function ProfilePage() {
     newsletter: false,
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const hasFocusedOnceRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
+      if (!hasFocusedOnceRef.current) {
+        hasFocusedOnceRef.current = true;
+        return;
+      }
       setRefreshTrigger((prev) => prev + 1);
     }, []),
   );
@@ -597,40 +616,59 @@ export function ProfilePage() {
     const unsubscribe = authService.subscribe((nextSession) => {
       if (!nextSession?.isAuthenticated) {
         setSessionUser(null);
+        setSessionRole(null);
         setFetchedProfile(null);
-        router.replace("/" as any);
         return;
       }
-      if (nextSession?.user) {
-        setSessionUser(nextSession.user as TenantProfileData);
-      }
+      setSessionRole(nextSession?.role ?? null);
+      setSessionUser(
+        (getSessionUserFromStorage() as TenantProfileData | null) ||
+          (nextSession?.user as TenantProfileData | null) ||
+          null,
+      );
     });
     return unsubscribe;
-  }, [router]);
+  }, []);
 
   const resolvedRole = useMemo(
-    () => resolveUserRole(sessionUser),
-    [sessionUser],
+    () => resolveUserRole(sessionUser, sessionRole),
+    [sessionRole, sessionUser],
   );
 
   const userId = useMemo(() => {
-    return getTenantId(sessionUser) ?? getTenantId(fetchedProfile);
-  }, [sessionUser, fetchedProfile]);
+    return (
+      getTenantId(sessionUser, sessionRole) ??
+      getTenantId(fetchedProfile, sessionRole)
+    );
+  }, [fetchedProfile, sessionRole, sessionUser]);
+
+  const landlordId = useMemo(
+    () => getLandlordId(sessionUser, sessionRole),
+    [sessionRole, sessionUser],
+  );
+
+  const isTenantAccount = Boolean(
+    sessionUser &&
+      (resolvedRole !== "arrendatario" || hasValidId(sessionUser?.id_inquilino)),
+  );
 
   const isAuthorizedTenant = Boolean(
-    sessionUser &&
-      (resolvedRole !== "arrendatario" || Boolean(sessionUser?.id_inquilino)) &&
-      userId,
+    isTenantAccount && hasValidId(userId),
+  );
+
+  const shouldRedirectToLandlord = Boolean(
+    authService.isAuthenticated() &&
+      sessionUser &&
+      resolvedRole === "arrendatario" &&
+      !hasValidId(sessionUser?.id_inquilino) &&
+      hasValidId(landlordId),
   );
 
   useEffect(() => {
-    if (!authService.isAuthenticated() || !sessionUser) {
-      return;
-    }
-    if (!isAuthorizedTenant) {
+    if (shouldRedirectToLandlord) {
       router.replace("/arrendatario/profileArrendatario" as any);
     }
-  }, [isAuthorizedTenant, router, sessionUser]);
+  }, [router, shouldRedirectToLandlord]);
 
   const syncUserInSession = useCallback((nextUserData: TenantProfileData) => {
     const currentSession = authService.getSession();
@@ -641,17 +679,32 @@ export function ProfilePage() {
       (currentSession?.user as TenantProfileData) ||
       (getSessionUserFromStorage() as TenantProfileData | null) ||
       {};
+    const resolvedTenantId = pickValidId(
+      nextUserData.id_inquilino,
+      nextUserData.id,
+      currentUser?.id_inquilino,
+      currentUser?.id,
+    );
+    const resolvedBaseId = pickValidId(
+      nextUserData.id,
+      currentUser?.id,
+      resolvedTenantId,
+    );
     const mergedUser: TenantProfileData = {
       ...currentUser,
       ...nextUserData,
-      id_inquilino:
-        nextUserData.id_inquilino ??
-        nextUserData.id ??
-        currentUser?.id_inquilino ??
-        currentUser?.id,
+      ...(resolvedBaseId !== null ? { id: resolvedBaseId } : {}),
+      ...(resolvedTenantId !== null ? { id_inquilino: resolvedTenantId } : {}),
       role: "inquilino",
       rol: "inquilino",
     };
+
+    const isSameSessionState =
+      JSON.stringify(currentSession.user ?? null) ===
+        JSON.stringify(mergedUser) && currentSession.role === "inquilino";
+    if (isSameSessionState) {
+      return;
+    }
 
     authService.setStorageItem("user", JSON.stringify(mergedUser));
     authService.setSession({
@@ -813,8 +866,40 @@ export function ProfilePage() {
     }
   };
 
-  if (!isAuthorizedTenant) {
+  if (!authService.isAuthenticated() || shouldRedirectToLandlord) {
     return null;
+  }
+
+  if (!isAuthorizedTenant) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+        <StatusBar style="dark" />
+        <HeaderInquilino />
+        <View className="flex-1 bg-[#FAFAFA] justify-center items-center px-6">
+          <View className="w-full max-w-md bg-white border border-[#6B8E23]/15 rounded-2xl p-6 shadow-sm items-center">
+            <AlertCircle size={36} color="#DC2626" />
+            <Text className="mt-3 font-poppins font-semibold text-xl text-[#5F5F5F] text-center">
+              No se pudo validar tu perfil de huésped
+            </Text>
+            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+              Tu sesión actual no incluye un identificador completo de inquilino.
+              Vuelve a iniciar sesión para continuar.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                authService.logout();
+                router.replace("/loginPage" as any);
+              }}
+              className="mt-5 w-full bg-[#6B8E23] rounded-xl py-3 items-center"
+            >
+              <Text className="text-white font-medium">
+                Volver a iniciar sesión
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   if (isLoading && !userData?.nombre && !userData?.correo) {
@@ -905,16 +990,41 @@ export function ProfilePage() {
     "CONFIRMED",
     "PAGADO",
     "PAID",
+    "APROBADO",
+    "APPROVED",
   ];
   const hasConfirmedPayment = (booking: Record<string, any>) => {
+    const targetId =
+      booking?.id_reserva ?? booking?.id_navegacion ?? booking?.id;
+    if (
+      targetId &&
+      authService.getStorageItem(
+        `nowayhome_paid_reserva_${String(targetId).trim()}`,
+      )
+    ) {
+      return true;
+    }
     const payments = Array.isArray(booking?.pagos) ? booking.pagos : [];
     const directStatus = String(
-      booking?.estado_pago || booking?.pago?.estado_pago || "",
+      booking?.estado_pago ||
+        booking?.estadoPago ||
+        booking?.pago_estado ||
+        booking?.payment_status ||
+        booking?.pago?.estado_pago ||
+        "",
     ).toUpperCase();
     return (
+      Boolean(booking?.id_transaccion_paypal) ||
+      booking?.pagado === true ||
       paidStatuses.includes(directStatus) ||
-      payments.some((payment: Record<string, any>) =>
-        paidStatuses.includes(String(payment?.estado_pago || "").toUpperCase()),
+      payments.some(
+        (payment: Record<string, any>) =>
+          Boolean(payment?.id_transaccion_paypal) ||
+          paidStatuses.includes(
+            String(
+              payment?.estado_pago || payment?.estado || payment?.status || "",
+            ).toUpperCase(),
+          ),
       )
     );
   };
@@ -946,6 +1056,13 @@ export function ProfilePage() {
       );
 
       const isPaid = hasConfirmedPayment(bookingToCancel);
+      void mostrarNotificacionLocal(
+        "Reserva cancelada",
+        isPaid
+          ? "La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior."
+          : "Tu reserva ha sido cancelada correctamente.",
+        { screen: "/inquilino/profileInquilino" },
+      );
       Alert.alert(
         "Reserva cancelada correctamente",
         isPaid
@@ -1169,6 +1286,19 @@ export function ProfilePage() {
                               >
                                 {estadoNormalizado}
                               </Text>
+                              {estadoNormalizado === "confirmada" ? (
+                                <Text
+                                  className={`font-semibold ${
+                                    hasConfirmedPayment(booking)
+                                      ? "text-[#6B8E23]"
+                                      : "text-[#A67C52]"
+                                  }`}
+                                >
+                                  {hasConfirmedPayment(booking)
+                                    ? " • Pagada con PayPal"
+                                    : " • Pendiente de pago"}
+                                </Text>
+                              ) : null}
                             </Text>
                           </View>
 
@@ -1187,10 +1317,25 @@ export function ProfilePage() {
                                   });
                                 }
                               }}
-                              className="flex-1 border-2 border-[#6B8E23] rounded-xl py-2.5 items-center"
+                              className={`flex-1 rounded-xl py-2.5 items-center ${
+                                estadoNormalizado === "confirmada" &&
+                                !hasConfirmedPayment(booking)
+                                  ? "bg-[#6B8E23]"
+                                  : "border-2 border-[#6B8E23]"
+                              }`}
                             >
-                              <Text className="text-[#6B8E23] font-medium">
-                                Ver Detalles
+                              <Text
+                                className={`font-medium ${
+                                  estadoNormalizado === "confirmada" &&
+                                  !hasConfirmedPayment(booking)
+                                    ? "text-white"
+                                    : "text-[#6B8E23]"
+                                }`}
+                              >
+                                {estadoNormalizado === "confirmada" &&
+                                !hasConfirmedPayment(booking)
+                                  ? "Pagar con PayPal"
+                                  : "Ver Detalles"}
                               </Text>
                             </TouchableOpacity>
 
@@ -1300,7 +1445,10 @@ export function ProfilePage() {
                                 router.push({
                                   pathname:
                                     "/inquilino/detallesPropiedadPage" as any,
-                                  params: { id: String(propiedadId) },
+                                  params: {
+                                    id: String(propiedadId),
+                                    from: "perfil",
+                                  },
                                 });
                               } else {
                                 router.push("/inquilino/ExplorarPage" as any);

@@ -30,6 +30,7 @@ import {
   type PropiedadItem,
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
+import { mostrarNotificacionLocal } from "@/services/localNotificationService";
 import { parseDateOnly } from "@/utils/dateUtils";
 import {
   getStoredSessionUser,
@@ -470,7 +471,10 @@ export function ReservaPage() {
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
       huespedes,
-      pago: costos.total,
+      pago: Number(costos.total.toFixed(2)),
+      total: Number(costos.total.toFixed(2)),
+      precio_base: Number(costos.subtotal.toFixed(2)),
+      comision_y_otros: Number(costos.comision.toFixed(2)),
     };
 
     try {
@@ -497,6 +501,16 @@ export function ReservaPage() {
         createdReserva?.id ||
         result?.id_reserva ||
         result?.id;
+
+      void mostrarNotificacionLocal(
+        "Solicitud de reserva enviada 🏡",
+        "Tu solicitud fue enviada al anfitrión. Recibirás avisos por correo cuando responda.",
+        {
+          screen: reservaId
+            ? `/inquilino/detallesReservaPage?idReserva=${String(reservaId)}`
+            : "/inquilino/profileInquilino",
+        },
+      );
 
       if (reservaId) {
         router.replace({

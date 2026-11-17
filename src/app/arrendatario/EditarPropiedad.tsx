@@ -29,6 +29,8 @@ import { authService } from '@/services/authService';
 import {
   getLandlordId,
   getStoredSessionUser,
+  getTenantId,
+  hasValidId,
   resolveUserRole,
 } from '@/utils/sessionRole';
 import { ConfirmActionModal } from '../../components/ConfirmActionModal';
@@ -208,6 +210,9 @@ export function EditarPropiedad() {
   const [sessionUser, setSessionUser] = useState<UserData | null>(
     () => getStoredSessionUser() as UserData | null
   );
+  const [sessionRole, setSessionRole] = useState<string | null>(
+    () => authService.getSession()?.role ?? null
+  );
   const [form, setForm] = useState<PropertyFormState>(initialForm);
   const [currentImages, setCurrentImages] = useState<PropertyImage[]>([]);
   const [newImages, setNewImages] = useState<NewPropertyImage[]>([]);
@@ -242,31 +247,47 @@ export function EditarPropiedad() {
     const unsubscribe = authService.subscribe((nextSession) => {
       if (!nextSession?.isAuthenticated) {
         setSessionUser(null);
+        setSessionRole(null);
         return;
       }
+      setSessionRole(nextSession?.role ?? null);
       setSessionUser(
-        (nextSession.user as UserData) || (getStoredSessionUser() as UserData | null)
+        (getStoredSessionUser() as UserData | null) || (nextSession.user as UserData | null)
       );
     });
     return unsubscribe;
   }, []);
 
-  const resolvedRole = useMemo(() => resolveUserRole(sessionUser), [sessionUser]);
-  const idArrendatario = useMemo(() => getLandlordId(sessionUser), [sessionUser]);
+  const resolvedRole = useMemo(
+    () => resolveUserRole(sessionUser, sessionRole),
+    [sessionRole, sessionUser]
+  );
+  const idArrendatario = useMemo(
+    () => getLandlordId(sessionUser, sessionRole),
+    [sessionRole, sessionUser]
+  );
+  const tenantId = useMemo(
+    () => getTenantId(sessionUser, sessionRole),
+    [sessionRole, sessionUser]
+  );
   const canView = Boolean(
     sessionUser &&
-      (resolvedRole === 'arrendatario' || Boolean(sessionUser?.id_arrendatario)) &&
-      idArrendatario
+      (resolvedRole === 'arrendatario' || hasValidId(sessionUser?.id_arrendatario)) &&
+      hasValidId(idArrendatario)
+  );
+  const shouldRedirectToTenant = Boolean(
+    authService.isAuthenticated() &&
+      sessionUser &&
+      resolvedRole === 'inquilino' &&
+      !hasValidId(sessionUser?.id_arrendatario) &&
+      hasValidId(tenantId)
   );
 
   useEffect(() => {
-    if (!authService.isAuthenticated() || !sessionUser) {
-      return;
-    }
-    if (!canView) {
+    if (shouldRedirectToTenant) {
       router.replace('/inquilino/profileInquilino' as any);
     }
-  }, [canView, router, sessionUser]);
+  }, [router, shouldRedirectToTenant]);
 
   const showActionMessage = (type: 'success' | 'error', description: string, title?: string) => {
     setActionMessage({
@@ -730,7 +751,44 @@ export function EditarPropiedad() {
     ? 'la imagen principal'
     : 'esta imagen';
 
-  if (!canView) return null;
+  if (!authService.isAuthenticated() || shouldRedirectToTenant) return null;
+
+  if (!canView) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={['top']}>
+        <StatusBar style="dark" />
+        <HeaderArrendatario />
+        <View className="flex-1 px-6 justify-center items-center">
+          <View className="w-full max-w-md rounded-2xl bg-white border border-[#6B8E23]/15 p-6 items-center shadow-sm">
+            <AlertCircle size={36} color="#DC2626" />
+            <Text className="mt-3 text-lg font-semibold text-[#5F5F5F] text-center">
+              No se pudo validar tu cuenta de arrendatario
+            </Text>
+            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+              Vuelve a tu perfil o inicia sesión nuevamente para editar propiedades.
+            </Text>
+            <View className="mt-5 w-full flex-col gap-3">
+              <TouchableOpacity
+                onPress={() => router.replace('/arrendatario/profileArrendatario' as any)}
+                className="w-full rounded-xl bg-[#6B8E23] py-3 items-center"
+              >
+                <Text className="text-white font-semibold">Volver al perfil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  authService.logout();
+                  router.replace('/loginPage' as any);
+                }}
+                className="w-full rounded-xl border-2 border-[#6B8E23] py-3 items-center"
+              >
+                <Text className="text-[#6B8E23] font-semibold">Volver a iniciar sesión</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!id) {
     return (

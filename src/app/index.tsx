@@ -1,12 +1,15 @@
-import { useFocusEffect, useRouter, type Href } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   DollarSign,
+  FileText,
   Home,
+  Info,
   Mail,
   MapPin,
   RefreshCw,
   Search,
+  ShieldCheck,
   Star,
   Users,
   X,
@@ -14,8 +17,8 @@ import {
 import { useCallback, useRef, useState, type ReactElement } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -33,8 +36,6 @@ import { API_BASE_URL } from "@/config/api";
 // usando el alias `@/components/header` para reutilizarlo en cualquier pantalla.
 // ============================================================================
 import { Header } from "@/components/header";
-import { authService } from "@/services/authService";
-import { getStoredSessionUser, resolveUserRole } from "@/utils/sessionRole";
 import {
   propiedadController,
   type PropiedadImagenItem,
@@ -166,6 +167,9 @@ export default function HomePage(): ReactElement {
   const [failedImageIds, setFailedImageIds] = useState<Record<string, boolean>>(
     {},
   );
+  const [infoModalType, setInfoModalType] = useState<
+    "anfitrion" | "aventura" | "privacidad" | "terminos" | null
+  >(null);
 
   const cargarCatalogo = useCallback(async (): Promise<PropiedadItem[]> => {
     const result = await propiedadController.cargarPropiedades();
@@ -293,39 +297,19 @@ export default function HomePage(): ReactElement {
   };
 
   const handleOpenPdf = (tipo: string): void => {
-    Alert.alert(
-      "Aviso",
-      `En la versión móvil, los PDFs de ${tipo} se abrirán externamente en una futura actualización.`,
-    );
+    if (tipo.toLowerCase().includes("privacidad")) {
+      setInfoModalType("privacidad");
+    } else {
+      setInfoModalType("terminos");
+    }
   };
 
   const handleHostCta = (): void => {
-    const session = authService.getSession();
-    const storedUser = getStoredSessionUser();
-    if (
-      session?.isAuthenticated &&
-      storedUser &&
-      resolveUserRole(storedUser, session?.role) === "arrendatario"
-    ) {
-      router.push("/arrendatario/crearPropiedad" as Href);
-      return;
-    }
-    router.push("/registerPage" as Href);
+    setInfoModalType("anfitrion");
   };
 
   const handleNavigateRegister = (): void => {
-    const session = authService.getSession();
-    const storedUser = getStoredSessionUser();
-    if (session?.isAuthenticated && storedUser) {
-      const role = resolveUserRole(storedUser, session?.role);
-      router.push(
-        (role === "arrendatario"
-          ? "/arrendatario/profileArrendatario"
-          : "/inquilino/ExplorarPage") as Href,
-      );
-      return;
-    }
-    router.push("/registerPage" as Href);
+    setInfoModalType("aventura");
   };
 
   if (isLoading) {
@@ -599,7 +583,7 @@ export default function HomePage(): ReactElement {
                         onPress={() =>
                           router.push({
                             pathname: "/inquilino/detallesPropiedadPage" as any,
-                            params: { id },
+                            params: { id, from: "index", soloInfo: "true" },
                           })
                         }
                         className="bg-white rounded-3xl overflow-hidden border border-brand/15 shadow-sm"
@@ -672,7 +656,7 @@ export default function HomePage(): ReactElement {
 
                             <View className="bg-cream/70 px-3.5 py-1.5 rounded-xl">
                               <Text className="text-brown font-bold text-xs">
-                                Ver detalles
+                                Ver información
                               </Text>
                             </View>
                           </View>
@@ -686,14 +670,14 @@ export default function HomePage(): ReactElement {
           )}
         </View>
 
-        {/* CTA Section */}
+        {/* CTA Section Informativa */}
         <View className="mx-5 my-4 bg-brand rounded-3xl py-8 px-6 items-center shadow-sm">
           <Text className="font-bold text-2xl text-white text-center mb-2.5">
             ¿Listo para tu próxima aventura?
           </Text>
           <Text className="text-white/90 text-sm text-center mb-6 leading-5">
-            Únete a miles de viajeros que confían en nosotros para encontrar su
-            hospedaje ideal
+            Conoce cómo miles de viajeros encuentran y consultan información de
+            alojamientos verificados en nuestra plataforma
           </Text>
           <TouchableOpacity
             activeOpacity={0.85}
@@ -701,7 +685,7 @@ export default function HomePage(): ReactElement {
             className="bg-white w-full py-3.5 rounded-2xl items-center justify-center shadow-sm"
           >
             <Text className="text-brand font-bold text-base">
-              Comenzar ahora
+              Ver información de la plataforma
             </Text>
           </TouchableOpacity>
         </View>
@@ -745,6 +729,150 @@ export default function HomePage(): ReactElement {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal estrictamente informativo para los accesos de Index */}
+      <Modal
+        visible={infoModalType !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInfoModalType(null)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center px-5">
+          <View className="w-full max-w-md bg-white rounded-3xl p-6 border border-brand/15 shadow-xl max-h-[82%]">
+            <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-cream">
+              <View className="flex-row items-center flex-1 pr-3">
+                <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
+                  {infoModalType === "privacidad" ||
+                  infoModalType === "terminos" ? (
+                    <FileText color="#6B8E23" size={20} />
+                  ) : infoModalType === "anfitrion" ? (
+                    <ShieldCheck color="#6B8E23" size={20} />
+                  ) : (
+                    <Info color="#6B8E23" size={20} />
+                  )}
+                </View>
+                <Text className="font-bold text-lg text-dark flex-1">
+                  {infoModalType === "anfitrion"
+                    ? "Información para Anfitriones"
+                    : infoModalType === "aventura"
+                      ? "¿Cómo funciona No Way Home?"
+                      : infoModalType === "privacidad"
+                        ? "Aviso de Privacidad"
+                        : "Términos y Condiciones"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setInfoModalType(null)}
+                className="p-1.5 rounded-full bg-cream/60"
+              >
+                <X color="#5F5F5F" size={18} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              className="mb-5"
+            >
+              {infoModalType === "anfitrion" ? (
+                <View className="gap-3">
+                  <Text className="text-dark/85 text-sm leading-5">
+                    En No Way Home los propietarios y anfitriones pueden dar a
+                    conocer sus espacios verificados con fotografías reales,
+                    ubicación en mapa y tarifas transparentes por noche o por
+                    mes.
+                  </Text>
+                  <View className="bg-cream/60 p-4 rounded-2xl border border-brand/10">
+                    <Text className="font-bold text-dark text-sm mb-1.5">
+                      Beneficios informativos para anfitriones:
+                    </Text>
+                    <Text className="text-dark/80 text-xs leading-5">
+                      • Publicación detallada con galería de entre 5 y 20
+                      fotografías.{"\n"}• Geolocalización interactiva para que
+                      los interesados ubiquen la zona fácilmente.{"\n"}•
+                      Control de solicitudes de estadía con aprobación o rechazo
+                      directo desde tu cuenta de anfitrión.{"\n"}• Recepción de
+                      pagos verificados y emisión de constancia digital.
+                    </Text>
+                  </View>
+                  <Text className="text-dark/70 text-xs leading-5">
+                    Nota: Esta pantalla de inicio es únicamente de carácter
+                    informativo. Para gestionar o publicar alojamientos, accede
+                    con tu cuenta de anfitrión desde el menú superior.
+                  </Text>
+                </View>
+              ) : infoModalType === "aventura" ? (
+                <View className="gap-3">
+                  <Text className="text-dark/85 text-sm leading-5">
+                    No Way Home conecta a viajeros con alojamientos temporales
+                    verificados de manera transparente y segura.
+                  </Text>
+                  <View className="bg-cream/60 p-4 rounded-2xl border border-brand/10">
+                    <Text className="font-bold text-dark text-sm mb-1.5">
+                      Guía informativa del servicio:
+                    </Text>
+                    <Text className="text-dark/80 text-xs leading-5">
+                      1. Consulta en este catálogo público las características,
+                      ubicación, capacidad y precios de cada propiedad.{"\n"}2.
+                      Las reservaciones únicamente pueden realizarse iniciando
+                      sesión con una cuenta de huésped (inquilino) desde la
+                      sección Explorar de tu perfil.{"\n"}3. Una vez solicitada
+                      una estancia, el anfitrión revisa y confirma la
+                      disponibilidad.{"\n"}4. Al aprobarse la solicitud, el
+                      pago se procesa de forma segura mediante PayPal y se
+                      genera tu Constancia de Reserva digital.
+                    </Text>
+                  </View>
+                </View>
+              ) : infoModalType === "privacidad" ? (
+                <View className="gap-3">
+                  <Text className="text-dark/85 text-sm leading-5">
+                    En No Way Home protegemos tus datos personales conforme a la
+                    normativa aplicable de protección de datos.
+                  </Text>
+                  <Text className="text-dark/80 text-xs leading-5">
+                    • Recopilación de datos: únicamente solicitamos nombre,
+                    correo electrónico y teléfono necesarios para identificar a
+                    huéspedes y anfitriones.{"\n"}• Uso de la información: los
+                    datos se emplean exclusivamente para la gestión de perfiles,
+                    comunicación de reservas y emisión de constancias de
+                    estancia.{"\n"}• Seguridad en pagos: las transacciones se
+                    procesan directamente en la pasarela segura de PayPal sin
+                    almacenar datos bancarios sensibles en el dispositivo.{"\n"}
+                    • Contacto: nowayhomeadmin@gmail.com.
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-3">
+                  <Text className="text-dark/85 text-sm leading-5">
+                    El uso de la plataforma No Way Home implica la aceptación de
+                    las siguientes condiciones informativas y de servicio:
+                  </Text>
+                  <Text className="text-dark/80 text-xs leading-5">
+                    • Catálogo de inicio: la página principal muestra
+                    información general de los alojamientos disponibles únicamente
+                    para consulta informativa.{"\n"}• Proceso de reserva: toda
+                    solicitud requiere cuenta activa de huésped y está sujeta a
+                    la aprobación del anfitrión.{"\n"}• Pagos y constancias:
+                    una vez aprobada la reserva por el anfitrión, el huésped
+                    completa el pago mediante PayPal para obtener su constancia
+                    verificada.{"\n"}• Cancelaciones: las solicitudes pueden
+                    cancelarse conforme a las políticas vigentes indicando el
+                    motivo correspondiente.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setInfoModalType(null)}
+              className="bg-brand py-3.5 rounded-2xl items-center justify-center"
+            >
+              <Text className="text-white font-bold text-sm">Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

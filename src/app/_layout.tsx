@@ -3,11 +3,16 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { BackHandler, Platform } from "react-native";
 import { authService } from "@/services/authService";
+import {
+  configurarListenerRespuestaNotificacion,
+  solicitarPermisosNotificaciones,
+} from "@/services/localNotificationService";
 
 function isProtectedPath(pathname: string): boolean {
   const clean = (pathname || "").toLowerCase();
   return (
     clean.startsWith("/inquilino/profileinquilino") ||
+    clean.startsWith("/inquilino/explorarpage") ||
     clean.startsWith("/inquilino/reservapage") ||
     clean.startsWith("/inquilino/detallesreservapage") ||
     clean.startsWith("/arrendatario")
@@ -29,7 +34,11 @@ export default function RootLayout() {
 
   // Proteger rutas privadas cuando la sesión está cerrada
   useEffect(() => {
-    if (!isAuthenticated && isProtectedPath(pathname)) {
+    if (
+      !isAuthenticated &&
+      !authService.isAuthenticated() &&
+      isProtectedPath(pathname)
+    ) {
       router.replace("/" as any);
     }
   }, [isAuthenticated, pathname, router]);
@@ -83,6 +92,31 @@ export default function RootLayout() {
       window.removeEventListener("popstate", handlePopState);
     };
   }, [isAuthenticated, router]);
+
+  // Inicializar Notificaciones Locales (permisos y listener al tocar una notificación en Expo Go)
+  useEffect(() => {
+    void solicitarPermisosNotificaciones();
+
+    const removeNotificationListener = configurarListenerRespuestaNotificacion(
+      (response) => {
+        const data = response?.notification?.request?.content?.data as
+          | Record<string, any>
+          | undefined;
+        if (data?.screen && typeof data.screen === "string") {
+          const targetScreen = data.screen.trim();
+          if (!isProtectedPath(targetScreen) || authService.isAuthenticated()) {
+            router.push(targetScreen as any);
+          } else {
+            router.push("/loginPage" as any);
+          }
+        }
+      },
+    );
+
+    return () => {
+      removeNotificationListener();
+    };
+  }, [router]);
 
   return (
     <Stack

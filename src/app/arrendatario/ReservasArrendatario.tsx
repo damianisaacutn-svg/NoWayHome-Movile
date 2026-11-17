@@ -14,7 +14,7 @@ import {
   UserRound,
   XCircle,
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -29,9 +29,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // Componentes y utilidades móviles
 import { API_BASE_URL } from '@/config/api';
 import { authService } from '@/services/authService';
+import { mostrarNotificacionLocal } from '@/services/localNotificationService';
 import {
   getLandlordId,
   getStoredSessionUser as getSessionUserFromStorage,
+  getTenantId,
+  hasValidId,
   resolveUserRole,
 } from '@/utils/sessionRole';
 import { AlertMessage } from '../../components/AlertMessage';
@@ -40,7 +43,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { HeaderArrendatario } from '../../components/headerArrendatario';
 import { LoadingState } from '../../components/LoadingState';
 import { landlordBookingService } from '../../services/landlordBookingService';
-import { formatDateLong } from '../../utils/dateUtils';
+import { formatDateLong, parseDateOnly } from '../../utils/dateUtils';
 import { PLACEHOLDER_PROPERTY_IMAGE } from '../inquilino/constants';
 
 // ---------------------------------------------------------------------------
@@ -250,9 +253,14 @@ export function ReservasArrendatario() {
     text: '',
   });
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+  const hasFocusedOnceRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
+      if (!hasFocusedOnceRef.current) {
+        hasFocusedOnceRef.current = true;
+        return;
+      }
       setRefreshTrigger((prev) => prev + 1);
     }, []),
   );
@@ -265,18 +273,22 @@ export function ReservasArrendatario() {
         const session = authService.getSession();
         const user = getSessionUserFromStorage() as UserSessionData | null;
         if (!session?.isAuthenticated || !user) {
-          router.replace('/' as any);
           return;
         }
 
         const role = resolveUserRole(user, session?.role);
         const idArrendatario = getLandlordId(user, session?.role);
-        if (role !== 'arrendatario' && !user?.id_arrendatario) {
+        const tenantId = getTenantId(user, session?.role);
+        if (
+          role === 'inquilino' &&
+          !hasValidId(user?.id_arrendatario) &&
+          hasValidId(tenantId)
+        ) {
           router.replace('/inquilino/profileInquilino' as any);
           return;
         }
 
-        if (!idArrendatario) {
+        if ((role !== 'arrendatario' && !hasValidId(user?.id_arrendatario)) || !hasValidId(idArrendatario)) {
           if (isMounted) {
             setError('No se pudo identificar tu cuenta de arrendatario.');
             setIsLoading(false);
@@ -362,7 +374,7 @@ export function ReservasArrendatario() {
     const role = resolveUserRole(user, session?.role);
     const idArrendatario = getLandlordId(user, session?.role);
 
-    if ((role !== 'arrendatario' && !user?.id_arrendatario) || !idArrendatario) {
+    if ((role !== 'arrendatario' && !hasValidId(user?.id_arrendatario)) || !hasValidId(idArrendatario)) {
       setMessage({
         type: 'error',
         title: 'Datos incompletos',
@@ -403,6 +415,27 @@ export function ReservasArrendatario() {
         type: 'success',
         title: 'Éxito',
         text: mensajes[nuevoEstado] || 'Estado actualizado correctamente.',
+      });
+
+      const normalizedNextState = String(nuevoEstado).toLowerCase();
+      const notifTitle =
+        normalizedNextState === 'confirmada'
+          ? 'Reserva confirmada ✅'
+          : normalizedNextState === 'rechazada'
+            ? 'Reserva rechazada'
+            : normalizedNextState === 'cancelada'
+              ? 'Reserva cancelada'
+              : 'Reserva actualizada';
+      const notifBody =
+        normalizedNextState === 'confirmada'
+          ? `Confirmaste la reserva #${parsedIdReserva}. El inquilino ya puede completar el pago.`
+          : normalizedNextState === 'rechazada'
+            ? `Rechazaste la solicitud de reserva #${parsedIdReserva}.`
+            : normalizedNextState === 'cancelada'
+              ? `La reserva #${parsedIdReserva} ha sido cancelada.`
+              : `La reserva #${parsedIdReserva} se actualizó correctamente.`;
+      void mostrarNotificacionLocal(notifTitle, notifBody, {
+        screen: '/arrendatario/ReservasArrendatario',
       });
       return true;
     } catch (err: unknown) {
@@ -461,8 +494,9 @@ export function ReservasArrendatario() {
 
   const calculateNights = (inicio?: string, fin?: string): number => {
     if (!inicio || !fin) return 0;
-    const start = new Date(inicio);
-    const end = new Date(fin);
+    const start = parseDateOnly(inicio) || new Date(inicio);
+    const end = parseDateOnly(fin) || new Date(fin);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
     const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
   };
@@ -721,11 +755,32 @@ export function ReservasArrendatario() {
                 const telefonoInquilino =
                   reserva.telefono_inquilino || inquilino.telefono || null;
                 const totalReserva = getReservaTotal(reserva);
+                const pagosArray = Array.isArray((reserva as any).pagos)
+                  ? ((reserva as any).pagos as Record<string, unknown>[])
+                  : [];
+                const pagoFromArray =
+                  pagosArray.find((p) => p?.estado_pago || p?.estado || p?.id_transaccion_paypal) ||
+                  null;
+                const localPaidRaw = hasValidReservationId
+                  ? authService.getStorageItem(`nowayhome_paid_reserva_${parsedReservaId}`)
+                  : null;
                 const estadoPago =
                   reserva.estado_pago ||
                   reserva.estadoPago ||
                   reserva.pago_estado ||
-                  reserva.payment_status;
+                  reserva.payment_status ||
+                  (pagoFromArray
+                    ? String(pagoFromArray.estado_pago || pagoFromArray.estado || 'Completado')
+                    : localPaidRaw
+                      ? 'Completado'
+                      : undefined);
+                const isReservaPaid = Boolean(
+                  localPaidRaw ||
+                    pagoFromArray?.id_transaccion_paypal ||
+                    /completad|completed|confirmad|confirmed|pagad|paid|aprobad|approved/i.test(
+                      String(estadoPago || ''),
+                    ),
+                );
 
                 return (
                   <View
@@ -839,7 +894,9 @@ export function ReservasArrendatario() {
                         {/* Aviso Contrato */}
                         <View className="rounded-lg bg-white/60 px-3 py-2">
                           <Text className="text-xs leading-5 text-[#5F5F5F]/70">
-                            El contrato se generará después del flujo de pago.
+                            {isReservaPaid
+                              ? 'Pago confirmado mediante PayPal. La constancia de reserva ya se encuentra activa.'
+                              : 'El contrato se generará después del flujo de pago.'}
                           </Text>
                         </View>
 

@@ -49,11 +49,17 @@ export function HeaderArrendatario() {
 
   const handleNavigation = (targetPath: string) => {
     setIsMobileMenuOpen(false);
+    if (isActiveRoute(targetPath)) {
+      return;
+    }
     router.push(targetPath as any);
   };
 
   const handleGoToProfile = () => {
     setIsMobileMenuOpen(false);
+    if (isActiveRoute("/arrendatario/profileArrendatario")) {
+      return;
+    }
     router.push("/arrendatario/profileArrendatario" as any);
   };
 

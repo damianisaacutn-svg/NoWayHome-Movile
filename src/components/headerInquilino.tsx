@@ -1,6 +1,5 @@
 import { usePathname, useRouter } from "expo-router";
 import {
-  Building2,
   Home,
   LogIn,
   LogOut,
@@ -67,11 +66,6 @@ export function HeaderInquilino() {
           label: "Inicio",
           path: "/",
           icon: Home,
-        },
-        {
-          label: "Explorar",
-          path: "/inquilino/ExplorarPage",
-          icon: Building2,
         },
         {
           label: "Iniciar Sesión",

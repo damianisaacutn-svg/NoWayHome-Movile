@@ -19,7 +19,13 @@ import {
   Star,
   X,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Image,
@@ -39,6 +45,9 @@ import { authService } from "@/services/authService";
 import {
   getLandlordId,
   getStoredSessionUser as getSessionUserFromStorage,
+  getTenantId,
+  hasValidId,
+  pickValidId,
   resolveUserRole,
 } from "@/utils/sessionRole";
 import { landlordBookingService } from "@/services/landlordBookingService";
@@ -197,7 +206,11 @@ function ChangePasswordModal({
     setError("");
     setSuccess("");
 
-    const userId = userData?.id_arrendatario ?? userData?.id;
+    const userId =
+      getLandlordId(userData, "arrendatario") ??
+      userData?.id_arrendatario ??
+      userData?.id ??
+      undefined;
     const result = await authController.updatePassword({
       userId,
       role: "arrendatario",
@@ -348,6 +361,18 @@ function ChangePasswordModal({
   );
 }
 
+function pickNonEmptyText(...candidates: unknown[]): string | undefined {
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      const trimmed = candidate.trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+  return undefined;
+}
+
 export function PerfilArrendatario({
   userData,
   onUserUpdate,
@@ -358,10 +383,17 @@ export function PerfilArrendatario({
       userData ||
       (getSessionUserFromStorage() as LandlordProfileData | null),
   );
+  const [sessionRole, setSessionRole] = useState<string | null>(
+    () => authService.getSession()?.role ?? null,
+  );
 
   const effectiveUserData = useMemo(() => {
     return userData || sessionUser;
   }, [userData, sessionUser]);
+
+  const effectiveSessionRole = effectiveUserData
+    ? (effectiveUserData.role ?? effectiveUserData.rol ?? sessionRole)
+    : sessionRole;
 
   const [fetchedProfile, setFetchedProfile] =
     useState<LandlordProfileData | null>(null);
@@ -415,9 +447,19 @@ export function PerfilArrendatario({
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const hasFocusedOnceRef = useRef(false);
+  const onUserUpdateRef = useRef(onUserUpdate);
+
+  useEffect(() => {
+    onUserUpdateRef.current = onUserUpdate;
+  }, [onUserUpdate]);
 
   useFocusEffect(
     useCallback(() => {
+      if (!hasFocusedOnceRef.current) {
+        hasFocusedOnceRef.current = true;
+        return;
+      }
       setRefreshTrigger((prev) => prev + 1);
     }, []),
   );
@@ -426,43 +468,60 @@ export function PerfilArrendatario({
     const unsubscribe = authService.subscribe((nextSession) => {
       if (!nextSession?.isAuthenticated) {
         setSessionUser(null);
+        setSessionRole(null);
         setFetchedProfile(null);
-        router.replace("/" as any);
         return;
       }
-      if (nextSession?.user) {
-        setSessionUser(nextSession.user as LandlordProfileData);
-      }
+      setSessionRole(nextSession?.role ?? null);
+      setSessionUser(
+        (getSessionUserFromStorage() as LandlordProfileData | null) ||
+          (nextSession?.user as LandlordProfileData | null) ||
+          null,
+      );
     });
     return unsubscribe;
-  }, [router]);
+  }, []);
 
   const resolvedRole = useMemo(
-    () => resolveUserRole(effectiveUserData),
-    [effectiveUserData],
+    () => resolveUserRole(effectiveUserData, effectiveSessionRole),
+    [effectiveSessionRole, effectiveUserData],
   );
 
   const idArrendatario = useMemo(() => {
     return (
-      getLandlordId(effectiveUserData) ?? getLandlordId(fetchedProfile)
+      getLandlordId(effectiveUserData, effectiveSessionRole) ??
+      getLandlordId(fetchedProfile, effectiveSessionRole)
     );
-  }, [effectiveUserData, fetchedProfile]);
+  }, [effectiveSessionRole, effectiveUserData, fetchedProfile]);
+
+  const tenantId = useMemo(
+    () => getTenantId(effectiveUserData, effectiveSessionRole),
+    [effectiveSessionRole, effectiveUserData],
+  );
+
+  const isLandlordAccount = Boolean(
+    resolvedRole === "arrendatario" ||
+      hasValidId(effectiveUserData?.id_arrendatario) ||
+      hasValidId(fetchedProfile?.id_arrendatario),
+  );
 
   const isAuthorizedLandlord = Boolean(
-    effectiveUserData &&
-      (resolvedRole === "arrendatario" ||
-        Boolean(effectiveUserData?.id_arrendatario)) &&
-      idArrendatario,
+    effectiveUserData && isLandlordAccount && hasValidId(idArrendatario),
+  );
+
+  const shouldRedirectToTenant = Boolean(
+    authService.isAuthenticated() &&
+      effectiveUserData &&
+      resolvedRole === "inquilino" &&
+      !isLandlordAccount &&
+      hasValidId(tenantId),
   );
 
   useEffect(() => {
-    if (!authService.isAuthenticated() || !effectiveUserData) {
-      return;
-    }
-    if (!isAuthorizedLandlord) {
+    if (shouldRedirectToTenant) {
       router.replace("/inquilino/profileInquilino" as any);
     }
-  }, [effectiveUserData, isAuthorizedLandlord, router]);
+  }, [router, shouldRedirectToTenant]);
 
   const showActionMessage = useCallback(
     (
@@ -490,17 +549,52 @@ export function PerfilArrendatario({
         (currentSession?.user as LandlordProfileData) ||
         (getSessionUserFromStorage() as LandlordProfileData | null) ||
         {};
+      const resolvedLandlordId = pickValidId(
+        nextProfileData.id_arrendatario,
+        nextProfileData.idArrendatario,
+        nextProfileData.arrendatario_id,
+        nextProfileData.id_arrendador,
+        nextProfileData.id,
+        currentUser?.id_arrendatario,
+        currentUser?.id,
+      );
+      const resolvedBaseId = pickValidId(
+        nextProfileData.id,
+        currentUser?.id,
+        resolvedLandlordId,
+      );
+      const nextNombre = pickNonEmptyText(
+        nextProfileData.nombre,
+        nextProfileData.name,
+        currentUser?.nombre,
+        currentUser?.name,
+      );
+      const nextCorreo = pickNonEmptyText(
+        nextProfileData.correo,
+        nextProfileData.email,
+        currentUser?.correo,
+        currentUser?.email,
+      );
+
       const mergedUser: LandlordProfileData = {
         ...currentUser,
         ...nextProfileData,
-        id_arrendatario:
-          nextProfileData.id_arrendatario ??
-          nextProfileData.id ??
-          currentUser?.id_arrendatario ??
-          currentUser?.id,
+        ...(resolvedBaseId !== null ? { id: resolvedBaseId } : {}),
+        ...(resolvedLandlordId !== null
+          ? { id_arrendatario: resolvedLandlordId }
+          : {}),
+        ...(nextNombre ? { nombre: nextNombre } : {}),
+        ...(nextCorreo ? { correo: nextCorreo } : {}),
         role: "arrendatario",
         rol: "arrendatario",
       };
+
+      const isSameSessionState =
+        JSON.stringify(currentSession.user ?? null) ===
+          JSON.stringify(mergedUser) && currentSession.role === "arrendatario";
+      if (isSameSessionState) {
+        return;
+      }
 
       authService.setStorageItem("user", JSON.stringify(mergedUser));
       authService.setSession({
@@ -514,7 +608,7 @@ export function PerfilArrendatario({
   );
 
   useEffect(() => {
-    if (!isAuthorizedLandlord || !idArrendatario) {
+    if (!isAuthorizedLandlord || !hasValidId(idArrendatario)) {
       return;
     }
 
@@ -525,12 +619,23 @@ export function PerfilArrendatario({
         const nextProfile = await getLandlordProfile(idArrendatario);
         if (!isMounted || !nextProfile) return;
 
-        setFetchedProfile((currentProfile) => ({
-          ...currentProfile,
-          ...nextProfile,
-        }));
+        setFetchedProfile((currentProfile) => {
+          const safeLandlordId = pickValidId(
+            nextProfile.id_arrendatario,
+            nextProfile.id,
+            currentProfile?.id_arrendatario,
+            idArrendatario,
+          );
+          return {
+            ...currentProfile,
+            ...nextProfile,
+            ...(safeLandlordId !== null
+              ? { id_arrendatario: safeLandlordId }
+              : {}),
+          };
+        });
         syncUserInSession(nextProfile);
-        onUserUpdate?.(nextProfile);
+        onUserUpdateRef.current?.(nextProfile);
       } catch (error: unknown) {
         if (!isMounted) return;
         const message =
@@ -549,13 +654,12 @@ export function PerfilArrendatario({
   }, [
     idArrendatario,
     isAuthorizedLandlord,
-    onUserUpdate,
     showActionMessage,
     syncUserInSession,
   ]);
 
   useEffect(() => {
-    if (!isAuthorizedLandlord || !idArrendatario) {
+    if (!isAuthorizedLandlord || !hasValidId(idArrendatario)) {
       return;
     }
 
@@ -588,14 +692,14 @@ export function PerfilArrendatario({
   }, [idArrendatario, isAuthorizedLandlord, refreshTrigger]);
 
   useEffect(() => {
-    if (!isAuthorizedLandlord || !idArrendatario) {
+    if (!isAuthorizedLandlord || !hasValidId(idArrendatario)) {
       return;
     }
 
     let isMounted = true;
 
     async function loadReservationStats() {
-      if (!idArrendatario) {
+      if (!hasValidId(idArrendatario)) {
         if (isMounted) {
           setIsLoadingStats(false);
           setStatsError("No se pudo identificar tu cuenta de arrendatario.");
@@ -718,7 +822,7 @@ export function PerfilArrendatario({
 
     if (Object.values(nextErrors).some(Boolean)) return;
 
-    if (!idArrendatario) {
+    if (!hasValidId(idArrendatario)) {
       showActionMessage(
         "error",
         "No se pudo identificar tu cuenta de arrendatario.",
@@ -739,7 +843,7 @@ export function PerfilArrendatario({
       };
       setFetchedProfile(mergedProfile);
       syncUserInSession(mergedProfile);
-      onUserUpdate?.(mergedProfile);
+      onUserUpdateRef.current?.(mergedProfile);
       setIsEditOpen(false);
       showActionMessage(
         "success",
@@ -796,8 +900,40 @@ export function PerfilArrendatario({
     );
   };
 
-  if (!isAuthorizedLandlord) {
+  if (!authService.isAuthenticated() || shouldRedirectToTenant) {
     return null;
+  }
+
+  if (!isAuthorizedLandlord) {
+    return (
+      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+        <StatusBar style="dark" />
+        <HeaderArrendatario />
+        <View className="flex-1 bg-[#FAFAFA] justify-center items-center px-6">
+          <View className="w-full max-w-md bg-white border border-[#6B8E23]/15 rounded-2xl p-6 shadow-sm items-center">
+            <AlertCircle size={36} color="#DC2626" />
+            <Text className="mt-3 font-poppins font-semibold text-xl text-[#5F5F5F] text-center">
+              No se pudo validar tu perfil de anfitrión
+            </Text>
+            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+              Tu sesión de arrendatario no incluye un identificador completo.
+              Vuelve a iniciar sesión para cargar tu perfil y tus propiedades.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                authService.logout();
+                router.replace("/loginPage" as any);
+              }}
+              className="mt-5 w-full bg-[#6B8E23] rounded-xl py-3 items-center"
+            >
+              <Text className="text-white font-medium">
+                Volver a iniciar sesión
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -1179,9 +1315,8 @@ export function PerfilArrendatario({
                   </View>
 
                   <Text className="pt-2 text-xs text-[#5F5F5F]/75">
-                    Estos montos son estimados y se calculan con base en las
-                    reservas registradas. Los pagos reales se habilitarán más
-                    adelante.
+                    Estos montos se calculan con base en las reservas
+                    registradas y los pagos procesados a través de PayPal.
                   </Text>
                 </View>
               )}

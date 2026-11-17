@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
@@ -10,18 +11,21 @@ import {
   ChevronRight,
   Clock,
   CreditCard,
+  ExternalLink,
   FileText,
   MapPin,
   MoreVertical,
   ReceiptText,
+  RefreshCw,
   ShieldCheck,
   Users,
   XCircle,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Image,
   Modal,
   Platform,
@@ -40,6 +44,7 @@ import {
   type PropiedadImagenItem,
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
+import { mostrarNotificacionLocal } from "@/services/localNotificationService";
 import { tenantBookingService } from "@/services/tenantBookingService";
 import { formatDateLong, formatDateShort, parseDateOnly } from "@/utils/dateUtils";
 import {
@@ -98,6 +103,36 @@ function getActiveTenantId(): string | number | null {
   const session = authService.getSession();
   if (!session?.isAuthenticated) return null;
   return getTenantId(getStoredSessionUser(), session?.role);
+}
+
+function getPaidReceiptStorageKey(reservaId: string | number): string {
+  return `nowayhome_paid_reserva_${String(reservaId).trim()}`;
+}
+
+function getStoredPaidReceipt(
+  reservaId?: string | number | null,
+): Record<string, any> | null {
+  if (reservaId === null || reservaId === undefined || reservaId === "") {
+    return null;
+  }
+  const raw = authService.getStorageItem(getPaidReceiptStorageKey(reservaId));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredPaidReceipt(
+  reservaId: string | number,
+  receipt: Record<string, any>,
+): void {
+  authService.setStorageItem(
+    getPaidReceiptStorageKey(reservaId),
+    JSON.stringify(receipt),
+  );
 }
 
 const calculateNights = (
@@ -228,6 +263,14 @@ function BookingContract({
     reserva?.nombre_arrendatario ||
     "Anfitrión NoWayHome";
 
+  const pagosList = Array.isArray(reserva?.pagos) ? reserva.pagos : [];
+  const transaccionPaypal =
+    pagosList.find((p: any) => p?.id_transaccion_paypal || p?.orderID || p?.id)
+      ?.id_transaccion_paypal ||
+    pagosList[0]?.orderID ||
+    reserva?.id_transaccion_paypal ||
+    null;
+
   return (
     <View className="rounded-2xl border border-[#6B8E23]/20 bg-white p-6 shadow-sm">
       <View className="flex-row items-center gap-3 border-b border-[#F2E8CF] pb-4 mb-4">
@@ -240,6 +283,7 @@ function BookingContract({
           </Text>
           <Text className="text-xs text-[#5F5F5F]/70">
             Folio #{reserva?.id_reserva || reserva?.id || "N/A"}
+            {transaccionPaypal ? ` • PayPal: ${transaccionPaypal}` : ""}
           </Text>
         </View>
       </View>
@@ -324,10 +368,14 @@ export function DetalleReservaPage() {
   const params = useLocalSearchParams<{
     idReserva?: string | string[];
     id?: string | string[];
+    pagoExitoso?: string | string[];
   }>();
 
   const rawParamId = params.idReserva ?? params.id;
   const idReserva = Array.isArray(rawParamId) ? rawParamId[0] : rawParamId;
+  const rawPagoExitoso = Array.isArray(params.pagoExitoso)
+    ? params.pagoExitoso[0]
+    : params.pagoExitoso;
 
   const [reserva, setReserva] = useState<Record<string, any> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -335,13 +383,37 @@ export function DetalleReservaPage() {
   const [isCanceling, setIsCanceling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [view, setView] = useState<"details" | "contract">("details");
+  const [view, setView] = useState<"details" | "contract">(() =>
+    rawPagoExitoso === "1" ? "contract" : "details",
+  );
   const [imagenActual, setImagenActual] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showPayPalModal, setShowPayPalModal] = useState(false);
+  const [showPaymentSuccessModal, setShowPaymentSuccessModal] = useState(
+    () => rawPagoExitoso === "1",
+  );
+  const [pendingOrderId, setPendingOrderId] = useState<string>("");
+  const [pendingApproveLink, setPendingApproveLink] = useState<string>("");
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+  const [paymentModalError, setPaymentModalError] = useState<string>("");
+  const isCapturingRef = useRef(false);
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", (event) => {
+      if (event.url && event.url.includes("pagoExitoso=1")) {
+        setShowPayPalModal(false);
+        setView("contract");
+        setShowPaymentSuccessModal(true);
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -380,7 +452,7 @@ export function DetalleReservaPage() {
           const data = await requestJson(
             `/inquilino/reservas/${encodeURIComponent(
               normalizedReservaId,
-            )}?populate=propiedad,arrendatario,inquilino`,
+            )}?populate=propiedad,arrendatario,inquilino,pagos`,
           );
           reservaCompleta =
             data?.reservation || data?.reserva || data?.data || data || null;
@@ -401,10 +473,71 @@ export function DetalleReservaPage() {
           }
         }
 
+        // Si la consulta individual no trajo pagos ni estado_pago, enriquecer desde el perfil o recibo local
+        if (
+          reservaCompleta &&
+          !reservaCompleta.estado_pago &&
+          (!Array.isArray(reservaCompleta.pagos) ||
+            reservaCompleta.pagos.length === 0)
+        ) {
+          const storedUserId = getActiveTenantId();
+          if (storedUserId) {
+            try {
+              const perfilRes =
+                await inquilinoController.cargarPerfilCompleto(storedUserId);
+              if (
+                perfilRes.success &&
+                Array.isArray(perfilRes.data?.reservas)
+              ) {
+                const matchInProfile = perfilRes.data.reservas.find(
+                  (r: any) =>
+                    String(r.id_reserva ?? r.id) ===
+                    String(normalizedReservaId),
+                );
+                if (matchInProfile) {
+                  reservaCompleta = {
+                    ...matchInProfile,
+                    ...reservaCompleta,
+                    estado_pago:
+                      reservaCompleta.estado_pago ||
+                      matchInProfile.estado_pago,
+                    pagos:
+                      Array.isArray(reservaCompleta.pagos) &&
+                      reservaCompleta.pagos.length > 0
+                        ? reservaCompleta.pagos
+                        : matchInProfile.pagos,
+                  };
+                }
+              }
+            } catch {
+              // Ignorar si falla enriquecimiento secundario
+            }
+          }
+        }
+
         if (!reservaCompleta) {
           throw new Error(
             "No se encontraron los datos de la reserva solicitada.",
           );
+        }
+
+        const localPaidReceipt = getStoredPaidReceipt(
+          reservaCompleta.id_reserva ?? reservaCompleta.id ?? normalizedReservaId,
+        );
+        if (localPaidReceipt) {
+          const existingPagos = Array.isArray(reservaCompleta.pagos)
+            ? reservaCompleta.pagos
+            : [];
+          reservaCompleta = {
+            ...reservaCompleta,
+            estado_pago: reservaCompleta.estado_pago || "COMPLETADO",
+            id_transaccion_paypal:
+              reservaCompleta.id_transaccion_paypal ||
+              localPaidReceipt.id_transaccion_paypal ||
+              localPaidReceipt.orderID,
+            pagos:
+              existingPagos.length > 0 ? existingPagos : [localPaidReceipt],
+          };
         }
 
         // Si falta poblar la propiedad o sus imágenes, consultamos los detalles de la propiedad
@@ -458,93 +591,413 @@ export function DetalleReservaPage() {
     };
   }, [idReserva, router]);
 
+  const fechaEntradaVal = reserva?.fecha_inicio || reserva?.fecha_entrada;
+  const fechaSalidaVal = reserva?.fecha_fin || reserva?.fecha_salida;
+  const noches = calculateNights(fechaEntradaVal, fechaSalidaVal);
+
+  const rawPagoNumeric =
+    typeof reserva?.pago === "object" && reserva?.pago !== null
+      ? Number(reserva.pago.monto ?? reserva.pago.total ?? 0)
+      : Number(reserva?.pago ?? 0);
+  const rawTotal =
+    (Number.isFinite(rawPagoNumeric) && rawPagoNumeric > 0
+      ? rawPagoNumeric
+      : 0) ||
+    Number(reserva?.total_pagado ?? 0) ||
+    Number(reserva?.precio_total ?? 0) ||
+    Number(reserva?.total ?? 0) ||
+    0;
+  const rawPrecioPorNoche = Number(
+    reserva?.propiedad?.precio_noche ??
+      reserva?.propiedad?.precio_por_noche ??
+      reserva?.propiedad?.precio ??
+      reserva?.precio_noche ??
+      reserva?.precio ??
+      0,
+  );
+
+  // Si no viene el precio por noche pero sí el total pagado (que incluye 10% comisión), lo deducimos
+  const precioPorNoche =
+    rawPrecioPorNoche > 0
+      ? rawPrecioPorNoche
+      : rawTotal > 0 && noches > 0
+        ? Math.round((rawTotal / 1.1 / noches) * 100) / 100
+        : 0;
+
+  const precioBaseTotal = Number(
+    reserva?.precio_base ?? precioPorNoche * noches,
+  );
+
+  const comisionExistente = Number(
+    reserva?.comision_y_otros ??
+      reserva?.tarifa_servicio ??
+      reserva?.tarifa ??
+      0,
+  );
+  const comisionYOtros =
+    comisionExistente > 0 ? comisionExistente : precioBaseTotal * 0.1;
+
+  const totalCalculado = precioBaseTotal + comisionYOtros;
+  const totalFinal = totalCalculado > 0 ? totalCalculado : rawTotal;
+
+  const verifyAndCapturePayment = useCallback(
+    async (
+      orderID: string,
+      options: { silentIfUnapproved?: boolean } = {},
+    ): Promise<boolean> => {
+      const cleanOrderId = String(orderID || "").trim();
+      if (!reserva || !cleanOrderId) return false;
+      if (isCapturingRef.current) return false;
+
+      const targetId = reserva.id_reserva || reserva.id || idReserva;
+      const numericId = Number(targetId);
+      const cleanIdReserva =
+        Number.isFinite(numericId) && numericId > 0 ? numericId : targetId;
+
+      isCapturingRef.current = true;
+      setIsVerifyingPayment(true);
+      if (!options.silentIfUnapproved) {
+        setPaymentModalError("");
+      }
+
+      try {
+        const res = await fetch(buildEndpointUrl("/payments/capturar-orden"), {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderID: cleanOrderId,
+            orderId: cleanOrderId,
+            id_orden: cleanOrderId,
+            token: cleanOrderId,
+            idReserva: cleanIdReserva,
+            id_reserva: cleanIdReserva,
+            monto: Number((totalFinal || 0).toFixed(2)),
+            total: Number((totalFinal || 0).toFixed(2)),
+          }),
+        });
+
+        const result = await res.json().catch(() => ({}));
+        const rawErrorText = String(
+          result?.message ||
+            result?.error ||
+            result?.details ||
+            "",
+        );
+
+        const isAlreadyCaptured =
+          /ORDER_ALREADY_CAPTURED|already been captured|ya fue capturada|ya est[aá] pagada/i.test(
+            rawErrorText,
+          );
+
+        const captureStatus = String(
+          result?.status ||
+            result?.data?.status ||
+            result?.capture?.status ||
+            result?.order?.status ||
+            "",
+        ).toUpperCase();
+
+        const isCaptureSuccessful =
+          isAlreadyCaptured ||
+          (res.ok &&
+            (result?.success === true ||
+              result?.ok === true ||
+              captureStatus === "COMPLETED" ||
+              captureStatus === "APPROVED" ||
+              Boolean(
+                result?.pago ||
+                  result?.payment ||
+                  result?.reserva ||
+                  result?.reservation,
+              ) ||
+              (result?.success !== false &&
+                result?.ok !== false &&
+                !result?.error)));
+
+        if (isCaptureSuccessful) {
+          const nuevoPago = {
+            id_transaccion_paypal: cleanOrderId,
+            orderID: cleanOrderId,
+            monto: totalFinal,
+            estado_pago: "COMPLETADO",
+            fecha_pago: new Date().toISOString(),
+          };
+
+          if (cleanIdReserva !== undefined && cleanIdReserva !== null) {
+            saveStoredPaidReceipt(cleanIdReserva, nuevoPago);
+          }
+
+          setReserva((prev) => {
+            if (!prev) return prev;
+            const prevPagos = Array.isArray(prev.pagos) ? prev.pagos : [];
+            const alreadyInList = prevPagos.some(
+              (p: any) =>
+                String(p?.id_transaccion_paypal || p?.orderID) === cleanOrderId,
+            );
+            return {
+              ...prev,
+              ...(result?.reserva || result?.reservation || {}),
+              estado: "CONFIRMADA",
+              estado_reserva: "CONFIRMADA",
+              estado_pago: "COMPLETADO",
+              id_transaccion_paypal: cleanOrderId,
+              pagos: alreadyInList ? prevPagos : [...prevPagos, nuevoPago],
+            };
+          });
+
+          setShowPayPalModal(false);
+          setPendingOrderId("");
+          setPendingApproveLink("");
+          setPaymentModalError("");
+          setView("contract");
+          setShowPaymentSuccessModal(true);
+
+          void mostrarNotificacionLocal(
+            "¡Pago confirmado en No Way Home! ✅",
+            `Tu reserva #${String(cleanIdReserva)} está confirmada y tu constancia ya está disponible.`,
+            {
+              screen: `/inquilino/detallesReservaPage?idReserva=${String(cleanIdReserva)}`,
+            },
+          );
+
+          // Cerrar automáticamente la ventana de PayPal:
+          // - En iOS: dismissBrowser() cierra SFSafariViewController.
+          // - En Android: como abrimos Chrome Custom Tabs con `createTask: false`
+          //   dentro del mismo task de MainActivity (singleTask), al disparar un
+          //   deep link hacia nuestra propia pantalla Android aplica CLEAR_TOP y
+          //   cierra automáticamente la pestaña de PayPal trayendo la app al frente.
+          try {
+            if (Platform.OS === "ios") {
+              WebBrowser.dismissBrowser();
+            } else if (Platform.OS === "android") {
+              const returnDeepLink = Linking.createURL(
+                "/inquilino/detallesReservaPage",
+                {
+                  queryParams: {
+                    idReserva: String(cleanIdReserva),
+                    pagoExitoso: "1",
+                  },
+                },
+              );
+              void Linking.openURL(returnDeepLink).catch(() => null);
+            }
+          } catch {
+            // Ignorar si el navegador ya fue cerrado
+          }
+
+          return true;
+        }
+
+        if (!options.silentIfUnapproved) {
+          const isUnapprovedOrder =
+            /ORDER_NOT_APPROVED|not approved|UNPROCESSABLE_ENTITY|no se pudo capturar|422/i.test(
+              rawErrorText,
+            ) || !res.ok;
+
+          setPaymentModalError(
+            isUnapprovedOrder
+              ? "PayPal aún no registra la aprobación del pago. Completa el inicio de sesión y presiona 'Continuar / Pagar ahora' en la ventana de PayPal, luego vuelve a confirmar aquí."
+              : rawErrorText ||
+                  "El pago aún no se ha completado en PayPal. Intenta verificar nuevamente.",
+          );
+        }
+        return false;
+      } catch (err: unknown) {
+        if (!options.silentIfUnapproved) {
+          setPaymentModalError(
+            err instanceof Error
+              ? err.message
+              : "Error de conexión al verificar el pago con el servidor.",
+          );
+        }
+        return false;
+      } finally {
+        isCapturingRef.current = false;
+        setIsVerifyingPayment(false);
+      }
+    },
+    [idReserva, reserva, totalFinal],
+  );
+
+  // Verificación continua en segundo plano (incluyendo cuando Chrome Custom Tabs está en primer plano en Android)
+  useEffect(() => {
+    if (!showPayPalModal || !pendingOrderId) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    // En Android, cuando Chrome Custom Tabs está abierta encima de MainActivity,
+    // React Native pausa setTimeout/setInterval (JavaTimerManager), pero NO pausa
+    // las promesas de red (OkHttp / fetch). Por ello encadenamos peticiones HTTP
+    // continuas para detectar la aprobación en PayPal en tiempo real y cerrar el navegador.
+    const runContinuousCaptureLoop = async () => {
+      let attempts = 0;
+      while (!isCancelled && attempts < 600) {
+        attempts += 1;
+        const captured = await verifyAndCapturePayment(pendingOrderId, {
+          silentIfUnapproved: true,
+        });
+        if (captured || isCancelled) {
+          return;
+        }
+
+        if (Platform.OS === "android" && AppState.currentState !== "active") {
+          await fetch(
+            buildEndpointUrl(
+              `/inquilino/reservas/${encodeURIComponent(
+                String(idReserva || ""),
+              )}`,
+            ),
+          ).catch(() => null);
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    };
+
+    void runContinuousCaptureLoop();
+
+    const appStateSub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active" && !isCancelled) {
+        void verifyAndCapturePayment(pendingOrderId, {
+          silentIfUnapproved: true,
+        });
+      }
+    });
+
+    const handleWebFocus = () => {
+      if (!isCancelled) {
+        void verifyAndCapturePayment(pendingOrderId, {
+          silentIfUnapproved: true,
+        });
+      }
+    };
+
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.addEventListener("focus", handleWebFocus);
+    }
+
+    return () => {
+      isCancelled = true;
+      appStateSub.remove();
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.removeEventListener("focus", handleWebFocus);
+      }
+    };
+  }, [idReserva, pendingOrderId, showPayPalModal, verifyAndCapturePayment]);
+
   const handleOpenPayPal = async () => {
     if (!reserva) return;
     setIsProcessingPayment(true);
     setError("");
+    setPaymentModalError("");
+
     try {
       const targetId = reserva.id_reserva || reserva.id || idReserva;
+      const numericId = Number(targetId);
+      const cleanIdReserva =
+        Number.isFinite(numericId) && numericId > 0 ? numericId : targetId;
+
       const order = await requestJson("/payments/crear-orden", {
         method: "POST",
-        body: JSON.stringify({ idReserva: targetId }),
+        body: JSON.stringify({
+          idReserva: cleanIdReserva,
+          id_reserva: cleanIdReserva,
+          monto: Number((totalFinal || 0).toFixed(2)),
+          total: Number((totalFinal || 0).toFixed(2)),
+        }),
       });
 
+      const resolvedOrderId = String(
+        order?.id ||
+          order?.orderID ||
+          order?.orderId ||
+          order?.data?.id ||
+          order?.order?.id ||
+          "",
+      ).trim();
+
+      const links =
+        order?.links || order?.data?.links || order?.order?.links || [];
       const approveLink =
-        order.links?.find((l: any) => l.rel === "approve")?.href ||
-        (order.id
-          ? `https://www.sandbox.paypal.com/checkoutnow?token=${order.id}`
+        (Array.isArray(links)
+          ? links.find(
+              (l: any) => l?.rel === "approve" || l?.rel === "payer-action",
+            )?.href
+          : null) ||
+        order?.approveUrl ||
+        order?.approvalUrl ||
+        (resolvedOrderId
+          ? `https://www.sandbox.paypal.com/checkoutnow?token=${encodeURIComponent(
+              resolvedOrderId,
+            )}`
           : null);
 
-      if (!approveLink) {
+      if (!approveLink || !resolvedOrderId) {
         throw new Error(
-          order.error || "No se pudo obtener el enlace de pago de PayPal.",
+          order?.error ||
+            order?.message ||
+            "No se pudo obtener el enlace de pago de PayPal.",
         );
       }
 
-      await WebBrowser.openBrowserAsync(approveLink);
+      setPendingOrderId(resolvedOrderId);
+      setPendingApproveLink(approveLink);
+      setShowPayPalModal(true);
 
-      if (order.id) {
-        await onApprove(order.id);
+      // En Android usamos `createTask: false` para que Chrome Custom Tabs se abra
+      // en el mismo task que MainActivity (singleTask) y pueda cerrarse automáticamente
+      // en cuanto el pago sea capturado.
+      const browserResult = await WebBrowser.openBrowserAsync(approveLink, {
+        createTask: false,
+        showInRecents: false,
+      });
+
+      if (
+        browserResult?.type === "cancel" ||
+        browserResult?.type === "dismiss"
+      ) {
+        await verifyAndCapturePayment(resolvedOrderId, {
+          silentIfUnapproved: true,
+        });
       }
     } catch (err: unknown) {
       Alert.alert(
         "Error de pago",
         err instanceof Error
           ? err.message
-          : "No se pudo iniciar el proceso de pago.",
+          : "No se pudo iniciar el proceso de pago con PayPal.",
       );
     } finally {
       setIsProcessingPayment(false);
     }
   };
 
-  const onApprove = async (orderID: string) => {
-    if (!reserva) return;
-    setLoading(true);
-    setError("");
+  const handleReopenPayPalBrowser = async () => {
+    if (!pendingApproveLink) return;
+    setPaymentModalError("");
     try {
-      const targetId = reserva.id_reserva || reserva.id || idReserva;
-      const result = await requestJson("/payments/capturar-orden", {
-        method: "POST",
-        body: JSON.stringify({
-          orderID,
-          idReserva: targetId,
-        }),
-      });
-
-      if (result.success) {
-        setReserva((prev) =>
-          prev
-            ? {
-                ...prev,
-                estado: "CONFIRMADA",
-                estado_pago: "COMPLETADO",
-                pagos: [
-                  ...(Array.isArray(prev.pagos) ? prev.pagos : []),
-                  {
-                    id_transaccion_paypal: orderID,
-                    monto: totalFinal,
-                    estado_pago: "Completado",
-                  },
-                ],
-              }
-            : prev,
-        );
-        setView("contract");
-        Alert.alert("¡Éxito!", "Pago confirmado correctamente.");
-      } else {
-        throw new Error(
-          result.error || "El pago no se completó en el servidor.",
-        );
+      const browserResult = await WebBrowser.openBrowserAsync(
+        pendingApproveLink,
+        {
+          createTask: false,
+          showInRecents: false,
+        },
+      );
+      if (
+        pendingOrderId &&
+        (browserResult?.type === "cancel" || browserResult?.type === "dismiss")
+      ) {
+        await verifyAndCapturePayment(pendingOrderId, {
+          silentIfUnapproved: true,
+        });
       }
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Error al capturar la orden de PayPal.";
-      Alert.alert("Aviso", msg);
-    } finally {
-      setLoading(false);
+    } catch {
+      setPaymentModalError("No se pudo abrir la ventana de PayPal.");
     }
   };
 
@@ -578,6 +1031,15 @@ export function DetalleReservaPage() {
         estado_reserva: reservaCancelada?.estado || "CANCELADA",
       }));
       setShowCancelConfirm(false);
+      void mostrarNotificacionLocal(
+        "Reserva cancelada",
+        isPaid
+          ? `La reserva #${String(targetReservaId)} fue cancelada. El reembolso se gestionará próximamente.`
+          : `Tu reserva #${String(targetReservaId)} ha sido cancelada correctamente.`,
+        {
+          screen: `/inquilino/detallesReservaPage?idReserva=${String(targetReservaId)}`,
+        },
+      );
       Alert.alert(
         "Reserva cancelada",
         isPaid
@@ -654,7 +1116,11 @@ export function DetalleReservaPage() {
             ? "RECHAZADA"
             : rawEstado;
 
-  const pagos = Array.isArray(reserva?.pagos) ? reserva.pagos : [];
+  const pagos = Array.isArray(reserva?.pagos)
+    ? reserva.pagos
+    : reserva?.pagos && typeof reserva.pagos === "object"
+      ? [reserva.pagos]
+      : [];
   const estadosPagoConfirmado = [
     "COMPLETADO",
     "COMPLETED",
@@ -662,16 +1128,34 @@ export function DetalleReservaPage() {
     "CONFIRMED",
     "PAGADO",
     "PAID",
+    "APROBADO",
+    "APPROVED",
   ];
   const estadoPagoReserva = String(
-    reserva?.estado_pago || reserva?.pago?.estado_pago || "",
+    reserva?.estado_pago ||
+      reserva?.estadoPago ||
+      reserva?.pago_estado ||
+      reserva?.payment_status ||
+      reserva?.pago?.estado_pago ||
+      reserva?.pago?.estado ||
+      "",
   ).toUpperCase();
+  const storedPaidReceipt = getStoredPaidReceipt(
+    reserva?.id_reserva ?? reserva?.id ?? idReserva,
+  );
   const isPaid =
+    Boolean(storedPaidReceipt) ||
+    Boolean(reserva?.id_transaccion_paypal) ||
+    reserva?.pagado === true ||
     estadosPagoConfirmado.includes(estadoPagoReserva) ||
-    pagos.some((pago: any) =>
-      estadosPagoConfirmado.includes(
-        String(pago?.estado_pago || "").toUpperCase(),
-      ),
+    pagos.some(
+      (pago: any) =>
+        Boolean(pago?.id_transaccion_paypal) ||
+        estadosPagoConfirmado.includes(
+          String(
+            pago?.estado_pago || pago?.estado || pago?.status || "",
+          ).toUpperCase(),
+        ),
     );
 
   const canDeleteFromHistory = ["CANCELADA", "RECHAZADA"].includes(estado);
@@ -782,46 +1266,6 @@ export function DetalleReservaPage() {
       prev === galleryUrls.length - 1 ? 0 : prev + 1,
     );
   };
-
-  const fechaEntradaVal = reserva?.fecha_inicio || reserva?.fecha_entrada;
-  const fechaSalidaVal = reserva?.fecha_fin || reserva?.fecha_salida;
-  const noches = calculateNights(fechaEntradaVal, fechaSalidaVal);
-
-  const rawTotal = Number(
-    reserva?.pago ?? reserva?.total_pagado ?? reserva?.total ?? 0,
-  );
-  const rawPrecioPorNoche = Number(
-    reserva?.propiedad?.precio_noche ??
-      reserva?.propiedad?.precio_por_noche ??
-      reserva?.propiedad?.precio ??
-      reserva?.precio_noche ??
-      reserva?.precio ??
-      0,
-  );
-
-  // Si no viene el precio por noche pero sí el total pagado (que incluye 10% comisión), lo deducimos
-  const precioPorNoche =
-    rawPrecioPorNoche > 0
-      ? rawPrecioPorNoche
-      : rawTotal > 0 && noches > 0
-        ? Math.round((rawTotal / 1.1 / noches) * 100) / 100
-        : 0;
-
-  const precioBaseTotal = Number(
-    reserva?.precio_base ?? precioPorNoche * noches,
-  );
-
-  const comisionExistente = Number(
-    reserva?.comision_y_otros ??
-      reserva?.tarifa_servicio ??
-      reserva?.tarifa ??
-      0,
-  );
-  const comisionYOtros =
-    comisionExistente > 0 ? comisionExistente : precioBaseTotal * 0.1;
-
-  const totalCalculado = precioBaseTotal + comisionYOtros;
-  const totalFinal = totalCalculado > 0 ? totalCalculado : rawTotal;
 
   const detailItems = [
     {
@@ -1110,7 +1554,7 @@ export function DetalleReservaPage() {
 
                 <View className="flex-row justify-between items-center">
                   <Text className="font-semibold text-base text-[#5F5F5F]">
-                    Total pagado
+                    {isPaid ? "Total pagado" : "Total a pagar"}
                   </Text>
                   <Text className="font-poppins font-bold text-lg text-[#6B8E23]">
                     {formatPrice(totalFinal)}
@@ -1140,11 +1584,18 @@ export function DetalleReservaPage() {
                   ¡Tu reserva fue aprobada!
                 </Text>
                 <Text className="mt-1 text-xs text-green-700/80 text-center leading-relaxed">
-                  El anfitrión ha confirmado tu solicitud. Completa el pago para
-                  finalizar tu reserva.
+                  El anfitrión ha confirmado tu solicitud. Completa el pago con
+                  PayPal para finalizar tu reserva y desbloquear tu Constancia
+                  de Reserva.
                 </Text>
                 <TouchableOpacity
-                  onPress={() => void handleOpenPayPal()}
+                  onPress={() => {
+                    if (pendingOrderId && pendingApproveLink) {
+                      setShowPayPalModal(true);
+                    } else {
+                      void handleOpenPayPal();
+                    }
+                  }}
                   disabled={isProcessingPayment}
                   className="mt-4 w-full bg-[#6B8E23] rounded-xl py-3.5 flex-row items-center justify-center shadow-sm"
                 >
@@ -1154,18 +1605,12 @@ export function DetalleReservaPage() {
                     <>
                       <CreditCard size={18} color="white" />
                       <Text className="ml-2 text-white font-semibold text-base">
-                        Pagar y Finalizar Reserva
+                        {pendingOrderId
+                          ? "Continuar Pago con PayPal"
+                          : "Pagar y Finalizar Reserva"}
                       </Text>
                     </>
                   )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setView("contract")}
-                  className="mt-3 w-full border border-[#6B8E23] bg-white rounded-xl py-2.5 items-center justify-center"
-                >
-                  <Text className="text-[#6B8E23] font-semibold text-xs">
-                    Ver Constancia de Reserva
-                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1250,6 +1695,144 @@ export function DetalleReservaPage() {
           isLoading={isCanceling}
           error={cancelError}
         />
+
+        {/* Modal de Proceso de Pago con PayPal */}
+        <Modal
+          visible={showPayPalModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            if (!isVerifyingPayment) {
+              setShowPayPalModal(false);
+            }
+          }}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center px-4">
+            <View className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl border border-[#6B8E23]/20">
+              <View className="items-center mb-4">
+                <View className="h-14 w-14 rounded-full bg-[#6B8E23]/15 items-center justify-center mb-3">
+                  <CreditCard size={28} color="#6B8E23" />
+                </View>
+                <Text className="font-poppins text-xl font-bold text-[#5F5F5F] text-center">
+                  Pago Seguro con PayPal
+                </Text>
+                <Text className="text-xs text-[#A67C52] font-semibold mt-1">
+                  Orden #{pendingOrderId || "En proceso"} •{" "}
+                  {formatPrice(totalFinal)}
+                </Text>
+              </View>
+
+              <View className="rounded-2xl bg-[#F2E8CF]/70 p-4 mb-4 border border-[#A67C52]/20">
+                <Text className="text-xs text-[#5F5F5F] leading-5 text-center">
+                  1. Inicia sesión con tu cuenta en la ventana de PayPal Sandbox
+                  y presiona{" "}
+                  <Text className="font-bold">
+                    &quot;Completar compra / Pagar ahora&quot;
+                  </Text>
+                  .{"\n"}
+                  2. Al terminar en PayPal, regresa a esta pantalla: tu pago se
+                  detectará automáticamente o puedes presionar{" "}
+                  <Text className="font-bold">&quot;Confirmar pago realizado&quot;</Text>.
+                </Text>
+              </View>
+
+              {paymentModalError ? (
+                <View className="flex-row items-start p-3.5 mb-4 rounded-xl border border-amber-300 bg-amber-50">
+                  <AlertCircle size={18} color="#B45309" />
+                  <Text className="ml-2 flex-1 text-xs text-amber-900 leading-4">
+                    {paymentModalError}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View className="flex-col gap-3">
+                <TouchableOpacity
+                  onPress={() => {
+                    if (pendingOrderId) {
+                      void verifyAndCapturePayment(pendingOrderId, {
+                        silentIfUnapproved: false,
+                      });
+                    }
+                  }}
+                  disabled={isVerifyingPayment}
+                  className={`bg-[#6B8E23] rounded-xl py-3.5 px-4 flex-row items-center justify-center shadow-sm ${
+                    isVerifyingPayment ? "opacity-70" : ""
+                  }`}
+                >
+                  {isVerifyingPayment ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <RefreshCw size={17} color="#fff" />
+                  )}
+                  <Text className="ml-2 text-white font-semibold text-sm">
+                    {isVerifyingPayment
+                      ? "Verificando con PayPal..."
+                      : "Ya completé el pago — Confirmar ahora"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => void handleReopenPayPalBrowser()}
+                  disabled={isVerifyingPayment}
+                  className="border-2 border-[#6B8E23] bg-white rounded-xl py-3 px-4 flex-row items-center justify-center"
+                >
+                  <ExternalLink size={16} color="#6B8E23" />
+                  <Text className="ml-2 text-[#6B8E23] font-semibold text-sm">
+                    Volver a abrir ventana de PayPal
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setShowPayPalModal(false)}
+                  disabled={isVerifyingPayment}
+                  className="py-2.5 items-center justify-center"
+                >
+                  <Text className="text-xs font-medium text-[#5F5F5F]/75">
+                    Cerrar ventana temporalmente
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Pago Exitoso */}
+        <Modal
+          visible={showPaymentSuccessModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPaymentSuccessModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center px-4">
+            <View className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl border border-[#6B8E23]/25 items-center">
+              <View className="h-16 w-16 rounded-full bg-green-100 items-center justify-center mb-4">
+                <CheckCircle size={38} color="#16a34a" />
+              </View>
+              <Text className="font-poppins text-xl font-bold text-[#5F5F5F] text-center mb-2">
+                ¡Pago Realizado con Éxito!
+              </Text>
+              <Text className="text-sm text-[#5F5F5F]/80 text-center leading-5 mb-5">
+                Tu pago en PayPal por{" "}
+                <Text className="font-bold text-[#6B8E23]">
+                  {formatPrice(totalFinal)}
+                </Text>{" "}
+                fue confirmado automáticamente. Tu reserva ha quedado finalizada
+                y tu Constancia de Reserva ya está disponible.
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPaymentSuccessModal(false);
+                  setView("contract");
+                }}
+                className="w-full bg-[#6B8E23] rounded-xl py-3.5 items-center justify-center shadow-sm"
+              >
+                <Text className="text-white font-semibold text-base">
+                  Ver Constancia de Reserva
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Modal de Eliminación del Historial */}
         <Modal

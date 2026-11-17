@@ -6,6 +6,7 @@ export interface SessionUserLike {
   id?: number | string | null;
   id_inquilino?: number | string | null;
   id_arrendatario?: number | string | null;
+  id_usuario?: number | string | null;
   nombre?: string | null;
   name?: string | null;
   correo?: string | null;
@@ -32,6 +33,43 @@ const TENANT_ROLES = new Set([
   "huésped",
 ]);
 
+export function hasValidId(value: unknown): value is string | number {
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed !== "" && trimmed.toLowerCase() !== "null" && trimmed.toLowerCase() !== "undefined";
+  }
+  return false;
+}
+
+export function pickValidId(
+  ...candidates: unknown[]
+): string | number | null {
+  for (const candidate of candidates) {
+    if (hasValidId(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+function pickFirstNonEmptyRole(...candidates: unknown[]): string {
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined) continue;
+    const normalized = String(candidate).trim();
+    if (
+      normalized &&
+      normalized.toLowerCase() !== "null" &&
+      normalized.toLowerCase() !== "undefined"
+    ) {
+      return normalized;
+    }
+  }
+  return "";
+}
+
 export function isLandlordRole(rawRole: unknown): boolean {
   const normalized = String(rawRole || "").trim().toLowerCase();
   return LANDLORD_ROLES.has(normalized);
@@ -50,10 +88,21 @@ export function getStoredSessionUser(): SessionUserLike | null {
       : null;
 
   if (sessionUser) {
-    if (session?.role && !sessionUser.role) {
+    const fallbackRole = pickFirstNonEmptyRole(
+      sessionUser.role,
+      sessionUser.rol,
+      sessionUser.tipo,
+      session?.role,
+    );
+    if (
+      fallbackRole &&
+      (!pickFirstNonEmptyRole(sessionUser.role) ||
+        !pickFirstNonEmptyRole(sessionUser.rol))
+    ) {
       return {
         ...sessionUser,
-        role: String(session.role),
+        role: pickFirstNonEmptyRole(sessionUser.role) || fallbackRole,
+        rol: pickFirstNonEmptyRole(sessionUser.rol) || fallbackRole,
       };
     }
     return sessionUser;
@@ -64,7 +113,24 @@ export function getStoredSessionUser(): SessionUserLike | null {
 
   try {
     const parsed = JSON.parse(rawStored) as SessionUserLike;
-    return parsed && typeof parsed === "object" ? parsed : null;
+    if (!parsed || typeof parsed !== "object") return null;
+    const fallbackRole = pickFirstNonEmptyRole(
+      parsed.role,
+      parsed.rol,
+      parsed.tipo,
+      session?.role,
+    );
+    if (
+      fallbackRole &&
+      (!pickFirstNonEmptyRole(parsed.role) || !pickFirstNonEmptyRole(parsed.rol))
+    ) {
+      return {
+        ...parsed,
+        role: pickFirstNonEmptyRole(parsed.role) || fallbackRole,
+        rol: pickFirstNonEmptyRole(parsed.rol) || fallbackRole,
+      };
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -74,17 +140,33 @@ export function resolveUserRole(
   user: SessionUserLike | null | undefined,
   sessionRole?: unknown,
 ): AppUserRole | null {
-  if (!user && !sessionRole) return null;
+  if (!user && !pickFirstNonEmptyRole(sessionRole)) return null;
 
-  const explicitRole =
-    sessionRole ?? user?.role ?? user?.rol ?? user?.tipo ?? "";
+  const explicitRole = pickFirstNonEmptyRole(
+    sessionRole,
+    user?.role,
+    user?.rol,
+    user?.tipo,
+    user?.userRole,
+    user?.user_role,
+  );
   if (isLandlordRole(explicitRole)) return "arrendatario";
   if (isTenantRole(explicitRole)) return "inquilino";
 
-  if (user?.id_arrendatario && !user?.id_inquilino) {
+  const hasLandlordId = Boolean(
+    pickValidId(
+      user?.id_arrendatario,
+      user?.idArrendatario,
+      user?.arrendatario_id,
+      user?.id_arrendador,
+    ),
+  );
+  const hasTenantId = hasValidId(user?.id_inquilino);
+
+  if (hasLandlordId && !hasTenantId) {
     return "arrendatario";
   }
-  if (user?.id_inquilino && !user?.id_arrendatario) {
+  if (hasTenantId && !hasLandlordId) {
     return "inquilino";
   }
 
@@ -96,12 +178,25 @@ export function getLandlordId(
   sessionRole?: unknown,
 ): string | number | null {
   if (!user) return null;
-  if (user.id_arrendatario !== undefined && user.id_arrendatario !== null && user.id_arrendatario !== "") {
-    return user.id_arrendatario;
+  const directId = pickValidId(
+    user.id_arrendatario,
+    user.idArrendatario,
+    user.arrendatario_id,
+    user.id_arrendador,
+  );
+  if (directId !== null) {
+    return directId;
   }
   const role = resolveUserRole(user, sessionRole);
-  if (role === "arrendatario" && user.id !== undefined && user.id !== null && user.id !== "") {
-    return user.id;
+  if (role === "arrendatario") {
+    return pickValidId(
+      user.id,
+      user.id_usuario,
+      user.idUsuario,
+      user.usuario_id,
+      user.userId,
+      user.user_id,
+    );
   }
   return null;
 }
@@ -111,15 +206,19 @@ export function getTenantId(
   sessionRole?: unknown,
 ): string | number | null {
   if (!user) return null;
-  if (user.id_inquilino !== undefined && user.id_inquilino !== null && user.id_inquilino !== "") {
+  if (hasValidId(user.id_inquilino)) {
     return user.id_inquilino;
   }
   const role = resolveUserRole(user, sessionRole);
   if (role === "arrendatario") {
     return null;
   }
-  if (user.id !== undefined && user.id !== null && user.id !== "") {
-    return user.id;
-  }
-  return null;
+  return pickValidId(
+    user.id,
+    user.id_usuario,
+    user.idUsuario,
+    user.usuario_id,
+    user.userId,
+    user.user_id,
+  );
 }

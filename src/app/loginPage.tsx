@@ -24,6 +24,59 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Header } from "@/components/header";
 import { authController } from "../controllers/authController";
 import { authService } from "../services/authService";
+import { hasValidId, pickValidId } from "@/utils/sessionRole";
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractUserFromPayload(payload: any): Record<string, any> {
+  if (!isPlainObject(payload)) return {};
+
+  const nestedData = isPlainObject(payload.data) ? payload.data : null;
+  const candidate =
+    (isPlainObject(payload.user) && payload.user) ||
+    (isPlainObject(payload.usuario) && payload.usuario) ||
+    (isPlainObject(payload.arrendatario) && payload.arrendatario) ||
+    (isPlainObject(payload.inquilino) && payload.inquilino) ||
+    (isPlainObject(payload.profile) && payload.profile) ||
+    (nestedData &&
+      ((isPlainObject(nestedData.user) && nestedData.user) ||
+        (isPlainObject(nestedData.usuario) && nestedData.usuario) ||
+        (isPlainObject(nestedData.arrendatario) && nestedData.arrendatario) ||
+        (isPlainObject(nestedData.inquilino) && nestedData.inquilino) ||
+        (isPlainObject(nestedData.profile) && nestedData.profile) ||
+        nestedData)) ||
+    null;
+
+  if (isPlainObject(candidate)) {
+    return candidate;
+  }
+
+  if (
+    hasValidId(
+      pickValidId(
+        payload.id,
+        payload.id_arrendatario,
+        payload.idArrendatario,
+        payload.arrendatario_id,
+        payload.id_arrendador,
+        payload.id_inquilino,
+        payload.id_usuario,
+        payload.userId,
+        payload.user_id,
+      ),
+    ) ||
+    payload.correo ||
+    payload.email ||
+    payload.nombre ||
+    payload.name
+  ) {
+    return payload;
+  }
+
+  return {};
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -36,45 +89,77 @@ function detectarRolUsuario(
   resultOrUser: any,
   fallbackRole = "",
 ): "inquilino" | "arrendatario" {
-  const userObj =
-    resultOrUser?.user ||
-    resultOrUser?.usuario ||
-    resultOrUser?.inquilino ||
-    resultOrUser?.arrendatario ||
-    resultOrUser?.data ||
-    resultOrUser?.profile ||
-    resultOrUser ||
-    {};
-  const rawRole = String(
+  const userObj = extractUserFromPayload(resultOrUser);
+  const nestedData = isPlainObject(resultOrUser?.data)
+    ? resultOrUser.data
+    : null;
+  const explicitRawRole = String(
     resultOrUser?.role ||
       resultOrUser?.rol ||
       resultOrUser?.tipo ||
+      resultOrUser?.userRole ||
+      resultOrUser?.user_role ||
+      nestedData?.role ||
+      nestedData?.rol ||
+      nestedData?.tipo ||
       userObj?.role ||
       userObj?.rol ||
       userObj?.tipo ||
-      fallbackRole ||
+      userObj?.userRole ||
+      userObj?.user_role ||
       "",
   )
     .trim()
     .toLowerCase();
 
   if (
-    rawRole === "inquilino" ||
-    rawRole === "guest" ||
-    rawRole === "huesped" ||
-    rawRole === "huésped"
+    explicitRawRole === "arrendatario" ||
+    explicitRawRole === "arrendador" ||
+    explicitRawRole === "host" ||
+    explicitRawRole === "anfitrion" ||
+    explicitRawRole === "anfitrión"
+  ) {
+    return "arrendatario";
+  }
+
+  if (
+    explicitRawRole === "inquilino" ||
+    explicitRawRole === "guest" ||
+    explicitRawRole === "huesped" ||
+    explicitRawRole === "huésped"
   ) {
     return "inquilino";
   }
 
+  const hasExplicitLandlordId = Boolean(
+    pickValidId(
+      userObj?.id_arrendatario,
+      userObj?.idArrendatario,
+      userObj?.arrendatario_id,
+      userObj?.id_arrendador,
+      resultOrUser?.id_arrendatario,
+      nestedData?.id_arrendatario,
+    ),
+  );
+  const hasExplicitTenantId = Boolean(
+    pickValidId(userObj?.id_inquilino, resultOrUser?.id_inquilino),
+  );
+
+  if (hasExplicitLandlordId && !hasExplicitTenantId) {
+    return "arrendatario";
+  }
+
+  if (hasExplicitTenantId && !hasExplicitLandlordId) {
+    return "inquilino";
+  }
+
+  const normalizedFallback = String(fallbackRole || "").trim().toLowerCase();
   if (
-    rawRole === "arrendatario" ||
-    rawRole === "arrendador" ||
-    rawRole === "host" ||
-    rawRole === "anfitrion" ||
-    rawRole === "anfitrión" ||
-    Boolean(userObj?.id_arrendatario) ||
-    Boolean(resultOrUser?.id_arrendatario)
+    normalizedFallback === "arrendatario" ||
+    normalizedFallback === "arrendador" ||
+    normalizedFallback === "host" ||
+    normalizedFallback === "anfitrion" ||
+    normalizedFallback === "anfitrión"
   ) {
     return "arrendatario";
   }
@@ -162,7 +247,7 @@ export default function LoginPage() {
     fallbackRole = "",
   ) => {
     const cleanEmail = email.trim().toLowerCase();
-    const matchingRegistered =
+    const rawMatchingRegistered =
       registeredFallback &&
       String(registeredFallback.email || "").toLowerCase() === cleanEmail
         ? registeredFallback
@@ -170,54 +255,94 @@ export default function LoginPage() {
 
     const resolvedRole = detectarRolUsuario(
       resultPayload,
-      fallbackRole || matchingRegistered?.role || "inquilino",
+      fallbackRole || rawMatchingRegistered?.role || "inquilino",
     );
 
-    const rawUserFromPayload =
-      resultPayload?.user ||
-      resultPayload?.usuario ||
-      resultPayload?.inquilino ||
-      resultPayload?.arrendatario ||
-      resultPayload?.data ||
-      resultPayload?.profile ||
-      resultPayload ||
-      {};
+    const matchingRegistered =
+      rawMatchingRegistered &&
+      (!rawMatchingRegistered.role ||
+        detectarRolUsuario(rawMatchingRegistered) === resolvedRole)
+        ? rawMatchingRegistered
+        : null;
+
+    const rawUserFromPayload = extractUserFromPayload(resultPayload);
+    const nestedData = isPlainObject(resultPayload?.data)
+      ? resultPayload.data
+      : null;
 
     const rawUser = {
-      ...(pendingUser || {}),
+      ...(isPlainObject(pendingUser) ? pendingUser : {}),
       ...rawUserFromPayload,
     };
 
-    const normalizedUser = {
-      ...matchingRegistered,
-      ...rawUser,
-      id:
-        rawUser.id ??
-        rawUser.id_inquilino ??
-        rawUser.id_arrendatario ??
-        rawUser.id_usuario ??
-        resultPayload?.id ??
+    const resolvedId =
+      pickValidId(
+        rawUser.id,
+        rawUser.id_arrendatario,
+        rawUser.idArrendatario,
+        rawUser.arrendatario_id,
+        rawUser.id_arrendador,
+        rawUser.id_inquilino,
+        rawUser.id_usuario,
+        rawUser.idUsuario,
+        rawUser.usuario_id,
+        rawUser.userId,
+        rawUser.user_id,
+        resultPayload?.id,
+        resultPayload?.id_usuario,
+        nestedData?.id,
         matchingRegistered?.id,
-      id_inquilino:
-        resolvedRole === "inquilino"
-          ? (rawUser.id_inquilino ??
-            rawUser.id ??
-            rawUser.id_usuario ??
-            resultPayload?.id_inquilino ??
-            resultPayload?.id ??
-            matchingRegistered?.id_inquilino ??
-            matchingRegistered?.id)
-          : (rawUser.id_inquilino ?? undefined),
-      id_arrendatario:
-        resolvedRole === "arrendatario"
-          ? (rawUser.id_arrendatario ??
-            rawUser.id ??
-            rawUser.id_usuario ??
-            resultPayload?.id_arrendatario ??
-            resultPayload?.id ??
-            matchingRegistered?.id_arrendatario ??
-            matchingRegistered?.id)
-          : (rawUser.id_arrendatario ?? undefined),
+      ) ?? undefined;
+
+    const resolvedTenantId =
+      resolvedRole === "inquilino"
+        ? (pickValidId(
+            rawUser.id_inquilino,
+            rawUser.id,
+            rawUser.id_usuario,
+            rawUser.userId,
+            rawUser.user_id,
+            resultPayload?.id_inquilino,
+            resultPayload?.id,
+            nestedData?.id_inquilino,
+            nestedData?.id,
+            matchingRegistered?.id_inquilino,
+            matchingRegistered?.id,
+          ) ?? undefined)
+        : hasValidId(rawUserFromPayload.id_inquilino)
+          ? rawUserFromPayload.id_inquilino
+          : undefined;
+
+    const resolvedLandlordId =
+      resolvedRole === "arrendatario"
+        ? (pickValidId(
+            rawUser.id_arrendatario,
+            rawUser.idArrendatario,
+            rawUser.arrendatario_id,
+            rawUser.id_arrendador,
+            rawUser.id,
+            rawUser.id_usuario,
+            rawUser.idUsuario,
+            rawUser.usuario_id,
+            rawUser.userId,
+            rawUser.user_id,
+            resultPayload?.id_arrendatario,
+            resultPayload?.id,
+            nestedData?.id_arrendatario,
+            nestedData?.id,
+            matchingRegistered?.id_arrendatario,
+            matchingRegistered?.id,
+          ) ?? undefined)
+        : hasValidId(rawUserFromPayload.id_arrendatario)
+          ? rawUserFromPayload.id_arrendatario
+          : undefined;
+
+    const normalizedUser = {
+      ...(matchingRegistered || {}),
+      ...rawUser,
+      id: resolvedId,
+      id_inquilino: resolvedTenantId,
+      id_arrendatario: resolvedLandlordId,
       nombre:
         rawUser.nombre ||
         rawUser.name ||
@@ -244,7 +369,12 @@ export default function LoginPage() {
       ...resultPayload,
       user: normalizedUser,
       role: resolvedRole,
-      token: resultPayload?.token || resultPayload?.accessToken || null,
+      token:
+        resultPayload?.token ||
+        resultPayload?.accessToken ||
+        nestedData?.token ||
+        nestedData?.accessToken ||
+        null,
     });
 
     redirectByRole(resolvedRole);
@@ -284,13 +414,9 @@ export default function LoginPage() {
             loginResult,
             matchingRegistered?.role || "inquilino",
           );
+          const extractedPartial = extractUserFromPayload(loginResult);
           const partialUser =
-            loginResult?.user ||
-            loginResult?.usuario ||
-            (loginResult as any)?.inquilino ||
-            (loginResult as any)?.arrendatario ||
-            loginResult?.data ||
-            null;
+            Object.keys(extractedPartial).length > 0 ? extractedPartial : null;
           setPendingRole(detectedRole);
           setPendingUser(partialUser);
           authService.setStorageItem(

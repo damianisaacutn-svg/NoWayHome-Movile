@@ -111,6 +111,145 @@ async function postJson(path, body) {
   return data;
 }
 
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hasValidIdentifier(value) {
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "string") {
+    const clean = value.trim();
+    return clean !== "" && clean.toLowerCase() !== "null" && clean.toLowerCase() !== "undefined";
+  }
+  return false;
+}
+
+function pickValidIdentifier(...candidates) {
+  for (const candidate of candidates) {
+    if (hasValidIdentifier(candidate)) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+function extractUserCandidate(payload) {
+  if (!isPlainObject(payload)) return null;
+
+  const nestedData = isPlainObject(payload.data) ? payload.data : null;
+  const direct =
+    (isPlainObject(payload.user) && payload.user) ||
+    (isPlainObject(payload.usuario) && payload.usuario) ||
+    (isPlainObject(payload.arrendatario) && payload.arrendatario) ||
+    (isPlainObject(payload.inquilino) && payload.inquilino) ||
+    (isPlainObject(payload.profile) && payload.profile) ||
+    (nestedData &&
+      ((isPlainObject(nestedData.user) && nestedData.user) ||
+        (isPlainObject(nestedData.usuario) && nestedData.usuario) ||
+        (isPlainObject(nestedData.arrendatario) && nestedData.arrendatario) ||
+        (isPlainObject(nestedData.inquilino) && nestedData.inquilino) ||
+        (isPlainObject(nestedData.profile) && nestedData.profile) ||
+        nestedData)) ||
+    null;
+
+  if (direct) return direct;
+
+  if (
+    hasValidIdentifier(payload.id) ||
+    hasValidIdentifier(payload.id_arrendatario) ||
+    hasValidIdentifier(payload.id_inquilino) ||
+    hasValidIdentifier(payload.id_usuario) ||
+    payload.correo ||
+    payload.email
+  ) {
+    return payload;
+  }
+
+  return null;
+}
+
+function normalizeRoleString(raw) {
+  const clean = String(raw || "").trim().toLowerCase();
+  if (
+    clean === "arrendatario" ||
+    clean === "arrendador" ||
+    clean === "host" ||
+    clean === "anfitrion" ||
+    clean === "anfitrión"
+  ) {
+    return "arrendatario";
+  }
+  if (
+    clean === "inquilino" ||
+    clean === "guest" ||
+    clean === "huesped" ||
+    clean === "huésped"
+  ) {
+    return "inquilino";
+  }
+  return clean || null;
+}
+
+function normalizeSessionPayloadUser(payload, resolvedUser, resolvedRole) {
+  if (!resolvedUser) return null;
+
+  const normalizedRole =
+    normalizeRoleString(resolvedRole) ||
+    normalizeRoleString(
+      resolvedUser.role ||
+        resolvedUser.rol ||
+        resolvedUser.tipo ||
+        payload?.role ||
+        payload?.rol ||
+        payload?.tipo,
+    );
+
+  const baseId = pickValidIdentifier(
+    resolvedUser.id,
+    resolvedUser.id_arrendatario,
+    resolvedUser.idArrendatario,
+    resolvedUser.arrendatario_id,
+    resolvedUser.id_arrendador,
+    resolvedUser.id_inquilino,
+    resolvedUser.id_usuario,
+    resolvedUser.idUsuario,
+    resolvedUser.usuario_id,
+    resolvedUser.userId,
+    resolvedUser.user_id,
+    payload?.id,
+    payload?.id_usuario,
+  );
+
+  const landlordId =
+    normalizedRole === "arrendatario"
+      ? pickValidIdentifier(
+          resolvedUser.id_arrendatario,
+          resolvedUser.idArrendatario,
+          resolvedUser.arrendatario_id,
+          resolvedUser.id_arrendador,
+          payload?.id_arrendatario,
+          baseId,
+        )
+      : pickValidIdentifier(resolvedUser.id_arrendatario);
+
+  const tenantId =
+    normalizedRole === "inquilino"
+      ? pickValidIdentifier(
+          resolvedUser.id_inquilino,
+          payload?.id_inquilino,
+          baseId,
+        )
+      : pickValidIdentifier(resolvedUser.id_inquilino);
+
+  return {
+    ...resolvedUser,
+    ...(baseId !== undefined ? { id: baseId } : {}),
+    ...(landlordId !== undefined ? { id_arrendatario: landlordId } : {}),
+    ...(tenantId !== undefined ? { id_inquilino: tenantId } : {}),
+    ...(normalizedRole ? { role: normalizedRole, rol: normalizedRole } : {}),
+  };
+}
+
 class AuthService {
   constructor() {
     // El backend de Node.js maneja la conexión con Supabase.
@@ -140,13 +279,34 @@ class AuthService {
       return;
     }
 
-    const resolvedUser = payload.user || payload.usuario || payload.data || null;
-    const resolvedToken = payload.token || payload.accessToken || null;
-    const resolvedRole =
+    const rawResolvedUser = extractUserCandidate(payload);
+    const resolvedToken =
+      payload.token ||
+      payload.accessToken ||
+      (isPlainObject(payload.data) &&
+        (payload.data.token || payload.data.accessToken)) ||
+      null;
+    const rawRole =
       payload.role ||
       payload.rol ||
-      (resolvedUser && (resolvedUser.role || resolvedUser.rol)) ||
+      payload.tipo ||
+      (isPlainObject(payload.data) &&
+        (payload.data.role || payload.data.rol || payload.data.tipo)) ||
+      (rawResolvedUser &&
+        (rawResolvedUser.role ||
+          rawResolvedUser.rol ||
+          rawResolvedUser.tipo ||
+          (hasValidIdentifier(rawResolvedUser.id_arrendatario) &&
+          !hasValidIdentifier(rawResolvedUser.id_inquilino)
+            ? "arrendatario"
+            : null))) ||
       null;
+    const resolvedRole = normalizeRoleString(rawRole);
+    const resolvedUser = normalizeSessionPayloadUser(
+      payload,
+      rawResolvedUser,
+      resolvedRole,
+    );
 
     this._session = {
       isAuthenticated: true,
@@ -258,7 +418,14 @@ class AuthService {
         result &&
         result.success &&
         !result.requires2FA &&
-        (result.token || result.user || result.usuario)
+        (result.token ||
+          result.accessToken ||
+          result.user ||
+          result.usuario ||
+          result.arrendatario ||
+          result.inquilino ||
+          result.profile ||
+          isPlainObject(result.data))
       ) {
         this.setSession(result);
       }
@@ -275,17 +442,33 @@ class AuthService {
 
   async verify2FA(correo, codigo, role) {
     try {
+      const normalizedEmail = correo.trim().toLowerCase();
       const result = await postJson("/auth/verify-2fa", {
-        correo: correo.trim().toLowerCase(),
+        correo: normalizedEmail,
         codigo,
         role,
       });
 
       if (result && result.success) {
+        const extractedUser = extractUserCandidate(result) || {
+          correo: normalizedEmail,
+        };
+        const resolvedRole =
+          normalizeRoleString(
+            result.role ||
+              result.rol ||
+              extractedUser.role ||
+              extractedUser.rol ||
+              (hasValidIdentifier(extractedUser.id_arrendatario) &&
+              !hasValidIdentifier(extractedUser.id_inquilino)
+                ? "arrendatario"
+                : null) ||
+              role,
+          ) || null;
         this.setSession({
           ...result,
-          role: result.role || role || null,
-          user: result.user || result.usuario || { correo: correo.trim().toLowerCase() },
+          role: resolvedRole,
+          user: extractedUser,
         });
       }
 

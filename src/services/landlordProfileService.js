@@ -6,6 +6,23 @@ function buildEndpointUrl(path) {
   return `${API_URL}${normalizedPath}`
 }
 
+function extractProfilePayload(data) {
+  if (!data || typeof data !== 'object') return data
+  if (data.profile || data.arrendatario || data.user || data.usuario) {
+    return data.profile || data.arrendatario || data.user || data.usuario
+  }
+  if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+    return (
+      data.data.profile ||
+      data.data.arrendatario ||
+      data.data.user ||
+      data.data.usuario ||
+      data.data
+    )
+  }
+  return data
+}
+
 export async function getLandlordProfile(idArrendatario) {
   const response = await fetch(
     buildEndpointUrl(`/arrendatario/profile/${encodeURIComponent(String(idArrendatario))}`),
@@ -21,7 +38,7 @@ export async function getLandlordProfile(idArrendatario) {
     throw new Error(data.message || 'No se pudo cargar tu informacion.')
   }
 
-  return data.profile || data.user || data.usuario || data
+  return extractProfilePayload(data)
 }
 
 export async function updateLandlordProfile(idArrendatario, profileData) {
@@ -43,5 +60,5 @@ export async function updateLandlordProfile(idArrendatario, profileData) {
     throw new Error(data.message || 'No se pudo actualizar tu informacion. Intenta nuevamente.')
   }
 
-  return data.profile || data.user || data.usuario || data
+  return extractProfilePayload(data)
 }

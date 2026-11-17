@@ -29,6 +29,8 @@ import { authService } from "@/services/authService";
 import {
   getLandlordId,
   getStoredSessionUser,
+  getTenantId,
+  hasValidId,
   resolveUserRole,
   type SessionUserLike,
 } from "@/utils/sessionRole";
@@ -181,6 +183,9 @@ export function CrearPropiedad() {
   const [userData, setUserData] = useState<SessionUserLike | null>(() =>
     getStoredSessionUser(),
   );
+  const [sessionRole, setSessionRole] = useState<string | null>(
+    () => authService.getSession()?.role ?? null,
+  );
   const [form, setForm] = useState<PropertyFormState>(initialForm);
   const [images, setImages] = useState<SelectedImage[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -200,40 +205,58 @@ export function CrearPropiedad() {
     description: "",
   });
 
+  const resolvedRole = useMemo(
+    () => resolveUserRole(userData, sessionRole),
+    [sessionRole, userData],
+  );
+
   const idArrendatario = useMemo(() => {
-    return getLandlordId(userData, authService.getSession()?.role);
-  }, [userData]);
+    return getLandlordId(userData, sessionRole);
+  }, [sessionRole, userData]);
+
+  const tenantId = useMemo(
+    () => getTenantId(userData, sessionRole),
+    [sessionRole, userData],
+  );
 
   const canView = useMemo(() => {
     if (!userData) return false;
     return (
-      resolveUserRole(userData, authService.getSession()?.role) ===
-        "arrendatario" || Boolean(userData?.id_arrendatario)
+      (resolvedRole === "arrendatario" || hasValidId(userData?.id_arrendatario)) &&
+      hasValidId(idArrendatario)
     );
-  }, [userData]);
+  }, [idArrendatario, resolvedRole, userData]);
+
+  const shouldRedirectToTenant = Boolean(
+    authService.isAuthenticated() &&
+      userData &&
+      resolvedRole === "inquilino" &&
+      !hasValidId(userData?.id_arrendatario) &&
+      hasValidId(tenantId),
+  );
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
       if (!nextSession?.isAuthenticated) {
         setUserData(null);
+        setSessionRole(null);
         return;
       }
-      setUserData(getStoredSessionUser());
+      setSessionRole(nextSession?.role ?? null);
+      setUserData(
+        getStoredSessionUser() ||
+          ((nextSession?.user as SessionUserLike | null) ?? null),
+      );
     });
     return unsubscribe;
   }, []);
 
   // Verificación de sesión y rol con authService
   useEffect(() => {
-    if (!userData) {
-      router.replace("/loginPage" as any);
-      return;
-    }
-
-    if (!canView) {
+    if (shouldRedirectToTenant) {
       router.replace("/inquilino/profileInquilino" as any);
     }
-  }, [userData, canView, router]);
+  }, [router, shouldRedirectToTenant]);
 
   const showActionMessage = (
     type: "success" | "error",
@@ -504,7 +527,48 @@ export function CrearPropiedad() {
     return <Text className="mt-1 text-sm text-red-700">{errors[field]}</Text>;
   };
 
-  if (!canView) return null;
+  if (!authService.isAuthenticated() || shouldRedirectToTenant) return null;
+
+  if (!canView) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top"]}>
+        <StatusBar style="dark" />
+        <HeaderArrendatario />
+        <View className="flex-1 px-6 justify-center items-center">
+          <View className="w-full max-w-md rounded-2xl bg-white border border-[#6B8E23]/15 p-6 items-center shadow-sm">
+            <AlertCircle size={36} color="#DC2626" />
+            <Text className="mt-3 text-lg font-semibold text-[#5F5F5F] text-center">
+              No se pudo validar tu cuenta de arrendatario
+            </Text>
+            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+              Vuelve a tu perfil o inicia sesión nuevamente para publicar una propiedad.
+            </Text>
+            <View className="mt-5 w-full flex-col gap-3">
+              <TouchableOpacity
+                onPress={() =>
+                  router.replace("/arrendatario/profileArrendatario" as any)
+                }
+                className="w-full rounded-xl bg-[#6B8E23] py-3 items-center"
+              >
+                <Text className="text-white font-semibold">Volver al perfil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  authService.logout();
+                  router.replace("/loginPage" as any);
+                }}
+                className="w-full rounded-xl border-2 border-[#6B8E23] py-3 items-center"
+              >
+                <Text className="text-[#6B8E23] font-semibold">
+                  Volver a iniciar sesión
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const priceLabel =
     form.tipo_precio === "mensual" ? "Precio mensual" : "Precio por noche";

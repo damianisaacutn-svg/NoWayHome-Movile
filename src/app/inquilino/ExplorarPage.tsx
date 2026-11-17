@@ -138,6 +138,10 @@ export function ExplorarPage() {
   }, []);
 
   useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      router.replace("/" as any);
+      return;
+    }
     if (isStrictLandlord) {
       router.replace("/arrendatario/profileArrendatario" as any);
     }
@@ -441,7 +445,7 @@ export function ExplorarPage() {
   const handleVerDetalles = (propiedadId: string | number) => {
     router.push({
       pathname: "/inquilino/detallesPropiedadPage" as any,
-      params: { id: String(propiedadId) },
+      params: { id: String(propiedadId), from: "explorar" },
     });
   };
 
