@@ -26,6 +26,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { authService } from "@/services/authService";
+import { notificarPropiedadCreada } from "@/services/notificationSyncService";
 import {
   getLandlordId,
   getStoredSessionUser,
@@ -501,10 +502,19 @@ export function CrearPropiedad() {
 
     try {
       setIsSubmitting(true);
+      const createdTitle = form.titulo.trim() || "tu propiedad";
       for (const image of images) {
         await appendImageToFormData(propertyFormData, "imagenes", image);
       }
-      await createProperty(propertyFormData);
+      const createdResult = await createProperty(propertyFormData);
+      const createdProp =
+        createdResult?.property || createdResult?.data || createdResult;
+      notificarPropiedadCreada({
+        idPropiedad: createdProp?.id_propiedad ?? createdProp?.id ?? null,
+        idArrendatario,
+        titulo: createdTitle,
+        estado: createdProp?.estado || "activa",
+      });
       setForm(initialForm);
       setImages([]);
       setErrors({});

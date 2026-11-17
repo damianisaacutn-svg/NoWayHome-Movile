@@ -26,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { API_BASE_URL } from '@/config/api';
 import { authService } from '@/services/authService';
+import { notificarPropiedadActualizada } from '@/services/notificationSyncService';
 import {
   getLandlordId,
   getStoredSessionUser,
@@ -166,6 +167,11 @@ function normalizeOptionalNumber(value: string): string {
   return value === '' ? '' : String(Number(value));
 }
 
+function serializeEditableDetails(formState: PropertyFormState): string {
+  const { estado: _estado, ...editable } = formState;
+  return JSON.stringify(editable);
+}
+
 function resolveImageUrl(rawUrl?: string | null): string {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
   const trimmed = rawUrl.trim();
@@ -242,6 +248,8 @@ export function EditarPropiedad() {
   });
 
   const imageSeqRef = useRef<number>(0);
+  const initialEstadoRef = useRef<PropertyState>('activa');
+  const initialEditableSnapshotRef = useRef<string>('');
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
@@ -317,7 +325,7 @@ export function EditarPropiedad() {
         const normalizedEstado: PropertyState =
           rawEstado === 'inactiva' || rawEstado === 'suspendida' ? rawEstado : 'activa';
 
-        setForm({
+        const loadedForm: PropertyFormState = {
           titulo: property.titulo || '',
           descripcion: property.descripcion || '',
           direccion: property.direccion || '',
@@ -335,7 +343,10 @@ export function EditarPropiedad() {
           latitud: property.latitud !== null && property.latitud !== undefined ? String(property.latitud) : '',
           longitud: property.longitud !== null && property.longitud !== undefined ? String(property.longitud) : '',
           estado: normalizedEstado,
-        });
+        };
+        initialEstadoRef.current = normalizedEstado;
+        initialEditableSnapshotRef.current = serializeEditableDetails(loadedForm);
+        setForm(loadedForm);
         setCurrentImages(property.imagenes || []);
       } catch (error: unknown) {
         if (!isMounted) return;
@@ -553,6 +564,15 @@ export function EditarPropiedad() {
           currentImages.filter((item) => item.id_imagen !== image.id_imagen),
       );
       setIsSuccess(true);
+      notificarPropiedadActualizada({
+        idPropiedad: id,
+        idArrendatario,
+        titulo: form.titulo.trim() || 'tu propiedad',
+        estadoAnterior: form.estado,
+        estadoNuevo: form.estado,
+        huboCambioDeEstado: false,
+        huboCambioDeDatos: true,
+      });
       showActionMessage('success', 'Imagen eliminada correctamente.');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'No se pudo eliminar la imagen.';
@@ -625,6 +645,15 @@ export function EditarPropiedad() {
       const result = await replacePropertyImage(id, image.id_imagen, replacementFormData);
       setCurrentImages(result?.property?.imagenes || result?.imagenes || currentImages);
       setIsSuccess(true);
+      notificarPropiedadActualizada({
+        idPropiedad: id,
+        idArrendatario,
+        titulo: form.titulo.trim() || 'tu propiedad',
+        estadoAnterior: form.estado,
+        estadoNuevo: form.estado,
+        huboCambioDeEstado: false,
+        huboCambioDeDatos: true,
+      });
       showActionMessage('success', 'Imagen reemplazada correctamente.');
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : 'No se pudo reemplazar la imagen.';
@@ -724,6 +753,26 @@ export function EditarPropiedad() {
         await appendImageToFormData(propertyFormData, 'imagenes', image);
       }
       const result = await updateProperty(id, propertyFormData);
+      const estadoAnterior = initialEstadoRef.current;
+      const estadoNuevo = form.estado;
+      const huboCambioDeEstado = estadoAnterior !== estadoNuevo;
+      const huboCambioDeDatos =
+        initialEditableSnapshotRef.current !== serializeEditableDetails(form) ||
+        newImages.length > 0;
+
+      notificarPropiedadActualizada({
+        idPropiedad: id,
+        idArrendatario,
+        titulo: form.titulo.trim() || result?.property?.titulo || 'tu propiedad',
+        estadoAnterior,
+        estadoNuevo,
+        huboCambioDeEstado,
+        huboCambioDeDatos,
+      });
+
+      initialEstadoRef.current = estadoNuevo;
+      initialEditableSnapshotRef.current = serializeEditableDetails(form);
+
       setNewImages([]);
       setCurrentImages(result?.property?.imagenes || result?.imagenes || currentImages);
       setIsSuccess(true);

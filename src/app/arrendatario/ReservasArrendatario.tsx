@@ -29,7 +29,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 // Componentes y utilidades móviles
 import { API_BASE_URL } from '@/config/api';
 import { authService } from '@/services/authService';
-import { mostrarNotificacionLocal } from '@/services/localNotificationService';
+import {
+  extraerTituloPropiedadDeReserva,
+  notificarCambioEstadoPorArrendatario,
+} from '@/services/notificationSyncService';
 import {
   getLandlordId,
   getStoredSessionUser as getSessionUserFromStorage,
@@ -387,6 +390,10 @@ export function ReservasArrendatario() {
     setMessage({ type: '', title: '', text: '' });
 
     try {
+      const targetReserva = reservas.find(
+        (reserva) => Number(reserva.id_reserva) === parsedIdReserva,
+      );
+
       await landlordBookingService.cambiarEstadoReserva(
         parsedIdReserva,
         idArrendatario,
@@ -417,25 +424,11 @@ export function ReservasArrendatario() {
         text: mensajes[nuevoEstado] || 'Estado actualizado correctamente.',
       });
 
-      const normalizedNextState = String(nuevoEstado).toLowerCase();
-      const notifTitle =
-        normalizedNextState === 'confirmada'
-          ? 'Reserva confirmada ✅'
-          : normalizedNextState === 'rechazada'
-            ? 'Reserva rechazada'
-            : normalizedNextState === 'cancelada'
-              ? 'Reserva cancelada'
-              : 'Reserva actualizada';
-      const notifBody =
-        normalizedNextState === 'confirmada'
-          ? `Confirmaste la reserva #${parsedIdReserva}. El inquilino ya puede completar el pago.`
-          : normalizedNextState === 'rechazada'
-            ? `Rechazaste la solicitud de reserva #${parsedIdReserva}.`
-            : normalizedNextState === 'cancelada'
-              ? `La reserva #${parsedIdReserva} ha sido cancelada.`
-              : `La reserva #${parsedIdReserva} se actualizó correctamente.`;
-      void mostrarNotificacionLocal(notifTitle, notifBody, {
-        screen: '/arrendatario/ReservasArrendatario',
+      notificarCambioEstadoPorArrendatario({
+        idReserva: parsedIdReserva,
+        idArrendatario,
+        nuevoEstado,
+        tituloPropiedad: extraerTituloPropiedadDeReserva(targetReserva),
       });
       return true;
     } catch (err: unknown) {

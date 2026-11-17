@@ -30,7 +30,7 @@ import {
   type PropiedadItem,
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
-import { mostrarNotificacionLocal } from "@/services/localNotificationService";
+import { notificarReservaPendienteCreada } from "@/services/notificationSyncService";
 import { parseDateOnly } from "@/utils/dateUtils";
 import {
   getStoredSessionUser,
@@ -502,15 +502,15 @@ export function ReservaPage() {
         result?.id_reserva ||
         result?.id;
 
-      void mostrarNotificacionLocal(
-        "Solicitud de reserva enviada 🏡",
-        "Tu solicitud fue enviada al anfitrión. Recibirás avisos por correo cuando responda.",
-        {
-          screen: reservaId
-            ? `/inquilino/detallesReservaPage?idReserva=${String(reservaId)}`
-            : "/inquilino/profileInquilino",
-        },
-      );
+      notificarReservaPendienteCreada({
+        idReserva: reservaId ?? null,
+        idInquilino,
+        tituloPropiedad:
+          propiedad?.titulo ||
+          propiedad?.nombre ||
+          propiedad?.descripcion?.split("\n")[0] ||
+          "tu alojamiento",
+      });
 
       if (reservaId) {
         router.replace({

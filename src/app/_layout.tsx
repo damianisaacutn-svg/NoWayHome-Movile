@@ -1,12 +1,13 @@
 import "../global.css";
 import { Stack, usePathname, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { BackHandler, Platform } from "react-native";
+import { AppState, BackHandler, Platform } from "react-native";
 import { authService } from "@/services/authService";
 import {
   configurarListenerRespuestaNotificacion,
   solicitarPermisosNotificaciones,
 } from "@/services/localNotificationService";
+import { sincronizarNotificacionesDeUsuario } from "@/services/notificationSyncService";
 
 function isProtectedPath(pathname: string): boolean {
   const clean = (pathname || "").toLowerCase();
@@ -117,6 +118,34 @@ export default function RootLayout() {
       removeNotificationListener();
     };
   }, [router]);
+
+  // Sincronización periódica y al volver a primer plano para disparar notificaciones locales
+  // cuando llegan eventos del backend (nuevas reservas pendientes, aceptaciones, pagos o cancelaciones)
+  useEffect(() => {
+    if (Platform.OS === "web" || !isAuthenticated || !session) {
+      return;
+    }
+
+    void sincronizarNotificacionesDeUsuario(session);
+
+    const intervalId = setInterval(() => {
+      void sincronizarNotificacionesDeUsuario();
+    }, 12000);
+
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (nextState === "active") {
+          void sincronizarNotificacionesDeUsuario();
+        }
+      },
+    );
+
+    return () => {
+      clearInterval(intervalId);
+      appStateSubscription.remove();
+    };
+  }, [isAuthenticated, session]);
 
   return (
     <Stack

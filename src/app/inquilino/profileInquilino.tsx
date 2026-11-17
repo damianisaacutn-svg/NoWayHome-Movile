@@ -40,7 +40,10 @@ import { API_URL } from "@/config/api";
 import { authController } from "../../controllers/authController";
 import { inquilinoController } from "@/controllers/inquilinoController";
 import { authService } from "@/services/authService";
-import { mostrarNotificacionLocal } from "@/services/localNotificationService";
+import {
+  extraerTituloPropiedadDeReserva,
+  notificarReservaCanceladaPorInquilino,
+} from "@/services/notificationSyncService";
 import { tenantBookingService } from "@/services/tenantBookingService";
 import { parseDateOnly } from "@/utils/dateUtils";
 import {
@@ -1056,13 +1059,13 @@ export function ProfilePage() {
       );
 
       const isPaid = hasConfirmedPayment(bookingToCancel);
-      void mostrarNotificacionLocal(
-        "Reserva cancelada",
-        isPaid
-          ? "La reserva fue cancelada. Si existía un pago asociado, el reembolso se gestionará en una fase posterior."
-          : "Tu reserva ha sido cancelada correctamente.",
-        { screen: "/inquilino/profileInquilino" },
-      );
+      notificarReservaCanceladaPorInquilino({
+        idReserva: bookingToCancel.id_reserva,
+        idInquilino: tenantId,
+        tituloPropiedad: extraerTituloPropiedadDeReserva(bookingToCancel),
+        isPaid,
+        redirectScreen: "/inquilino/profileInquilino",
+      });
       Alert.alert(
         "Reserva cancelada correctamente",
         isPaid

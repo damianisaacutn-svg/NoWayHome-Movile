@@ -44,7 +44,11 @@ import {
   type PropiedadImagenItem,
 } from "@/controllers/propiedadController";
 import { authService } from "@/services/authService";
-import { mostrarNotificacionLocal } from "@/services/localNotificationService";
+import {
+  extraerTituloPropiedadDeReserva,
+  notificarPagoConfirmadoInquilino,
+  notificarReservaCanceladaPorInquilino,
+} from "@/services/notificationSyncService";
 import { tenantBookingService } from "@/services/tenantBookingService";
 import { formatDateLong, formatDateShort, parseDateOnly } from "@/utils/dateUtils";
 import {
@@ -755,13 +759,11 @@ export function DetalleReservaPage() {
           setView("contract");
           setShowPaymentSuccessModal(true);
 
-          void mostrarNotificacionLocal(
-            "¡Pago confirmado en No Way Home! ✅",
-            `Tu reserva #${String(cleanIdReserva)} está confirmada y tu constancia ya está disponible.`,
-            {
-              screen: `/inquilino/detallesReservaPage?idReserva=${String(cleanIdReserva)}`,
-            },
-          );
+          notificarPagoConfirmadoInquilino({
+            idReserva: cleanIdReserva,
+            idInquilino: reserva?.id_inquilino ?? getActiveTenantId(),
+            tituloPropiedad: extraerTituloPropiedadDeReserva(reserva),
+          });
 
           // Cerrar automáticamente la ventana de PayPal:
           // - En iOS: dismissBrowser() cierra SFSafariViewController.
@@ -1031,15 +1033,12 @@ export function DetalleReservaPage() {
         estado_reserva: reservaCancelada?.estado || "CANCELADA",
       }));
       setShowCancelConfirm(false);
-      void mostrarNotificacionLocal(
-        "Reserva cancelada",
-        isPaid
-          ? `La reserva #${String(targetReservaId)} fue cancelada. El reembolso se gestionará próximamente.`
-          : `Tu reserva #${String(targetReservaId)} ha sido cancelada correctamente.`,
-        {
-          screen: `/inquilino/detallesReservaPage?idReserva=${String(targetReservaId)}`,
-        },
-      );
+      notificarReservaCanceladaPorInquilino({
+        idReserva: targetReservaId,
+        idInquilino: targetInquilinoId,
+        tituloPropiedad: extraerTituloPropiedadDeReserva(reserva),
+        isPaid,
+      });
       Alert.alert(
         "Reserva cancelada",
         isPaid
