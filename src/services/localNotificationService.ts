@@ -14,6 +14,7 @@ import {
   type NotificationResponse,
 } from "expo-notifications";
 import { Platform } from "react-native";
+import { inAppNotificationService } from "./inAppNotificationService";
 
 /**
  * Servicio de Notificaciones Locales (Expo Go compatible) - No Way Home
@@ -134,6 +135,14 @@ export async function mostrarNotificacionLocal(
   cuerpo: string,
   data?: Record<string, unknown>,
 ): Promise<string | null> {
+  const screen =
+    data && typeof data.screen === "string" ? data.screen : undefined;
+  inAppNotificationService.add({
+    title: titulo,
+    body: cuerpo,
+    screen,
+  });
+
   if (Platform.OS === "web") {
     return null;
   }

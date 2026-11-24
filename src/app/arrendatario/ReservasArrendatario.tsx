@@ -41,6 +41,7 @@ import {
   resolveUserRole,
 } from '@/utils/sessionRole';
 import { AlertMessage } from '../../components/AlertMessage';
+import { BottomTabBar } from '../../components/BottomTabBar';
 import { CancelBookingModal } from '../../components/CancelBookingModal';
 import { EmptyState } from '../../components/EmptyState';
 import { HeaderArrendatario } from '../../components/headerArrendatario';
@@ -143,62 +144,62 @@ export interface ReservationSummary {
 const ESTADO_STYLES: Record<string, EstadoStyleConfig> = {
   PENDIENTE: {
     label: 'Pendiente',
-    bg: 'bg-amber-50',
-    text: 'text-amber-800',
-    badge: 'bg-amber-200 text-amber-900',
-    card: 'bg-[#F2E8CF] border-[#A67C52]/20',
+    bg: 'bg-[#F5F2EC]',
+    text: 'text-[#B87333]',
+    badge: 'bg-amber-100 text-amber-900 border-amber-200',
+    card: 'bg-[#F5F2EC] border-[#DCDCDC]',
   },
   CONFIRMADA: {
     label: 'Confirmada',
-    bg: 'bg-green-50',
-    text: 'text-green-800',
-    badge: 'bg-green-200 text-green-900',
-    card: 'bg-white border-[#6B8E23]/15',
+    bg: 'bg-white',
+    text: 'text-[#B8860B]',
+    badge: 'bg-[#B8860B]/15 text-[#B8860B] border-[#B8860B]/30',
+    card: 'bg-white border-[#DCDCDC]',
   },
   RECHAZADA: {
     label: 'Rechazada',
-    bg: 'bg-gray-50',
-    text: 'text-gray-800',
-    badge: 'bg-gray-200 text-gray-900',
-    card: 'bg-white border-red-100',
+    bg: 'bg-white',
+    text: 'text-red-700',
+    badge: 'bg-red-50 text-red-700 border-red-200',
+    card: 'bg-white border-red-200',
   },
   CANCELADA: {
     label: 'Cancelada',
-    bg: 'bg-gray-50',
-    text: 'text-gray-700',
-    badge: 'bg-gray-100 text-gray-700 border-gray-200',
-    card: 'bg-white border-[#5F5F5F]/10',
+    bg: 'bg-white',
+    text: 'text-[#595959]',
+    badge: 'bg-[#DCDCDC]/50 text-[#1C1C1C] border-[#DCDCDC]',
+    card: 'bg-white border-[#DCDCDC]',
   },
   pendiente: {
-    card: 'bg-[#F2E8CF] border-[#A67C52]/20',
+    card: 'bg-[#F5F2EC] border-[#DCDCDC]',
     badge: 'bg-amber-100 text-amber-900 border-amber-200',
     label: 'Pendiente',
-    bg: 'bg-amber-50',
+    bg: 'bg-[#F5F2EC]',
   },
   confirmada: {
-    card: 'bg-white border-[#6B8E23]/15',
-    badge: 'bg-green-100 text-green-800 border-green-200',
+    card: 'bg-white border-[#DCDCDC]',
+    badge: 'bg-[#B8860B]/15 text-[#B8860B] border-[#B8860B]/30',
     label: 'Confirmada',
-    bg: 'bg-green-50',
+    bg: 'bg-white',
   },
   rechazada: {
-    card: 'bg-white border-red-100',
-    badge: 'bg-red-50 text-red-700 border-red-100',
+    card: 'bg-white border-red-200',
+    badge: 'bg-red-50 text-red-700 border-red-200',
     label: 'Rechazada',
-    bg: 'bg-gray-50',
+    bg: 'bg-white',
   },
   cancelada: {
-    card: 'bg-white border-[#5F5F5F]/10',
-    badge: 'bg-gray-100 text-gray-700 border-gray-200',
+    card: 'bg-white border-[#DCDCDC]',
+    badge: 'bg-[#DCDCDC]/50 text-[#1C1C1C] border-[#DCDCDC]',
     label: 'Cancelada',
-    bg: 'bg-gray-50',
+    bg: 'bg-white',
   },
   default: {
     label: 'Desconocido',
-    bg: 'bg-gray-50',
-    text: 'text-gray-800',
-    badge: 'bg-gray-200 text-gray-900',
-    card: 'bg-white border-[#5F5F5F]/10',
+    bg: 'bg-white',
+    text: 'text-[#1C1C1C]',
+    badge: 'bg-[#DCDCDC] text-[#1C1C1C] border-[#DCDCDC]',
+    card: 'bg-white border-[#DCDCDC]',
   },
 };
 
@@ -532,6 +533,7 @@ export function ReservasArrendatario() {
         <View className="flex-1 bg-[#FAFAFA] items-center justify-center">
           <LoadingState message="Cargando reservas..." className="flex-1" />
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -574,16 +576,16 @@ export function ReservasArrendatario() {
           {/* Botón Volver al perfil */}
           <TouchableOpacity
             onPress={() => router.push('/arrendatario/profileArrendatario' as any)}
-            className="mb-8 flex-row items-center self-start"
+            className="mb-8 min-h-[44px] flex-row items-center self-start"
           >
-            <ArrowLeft size={20} color="#5F5F5F" />
-            <Text className="ml-2 font-medium text-[#5F5F5F]">Volver al perfil</Text>
+            <ArrowLeft size={20} color="#B87333" />
+            <Text className="ml-2 font-inter-medium text-[#1C1C1C]">Volver al perfil</Text>
           </TouchableOpacity>
 
           {/* Encabezado */}
           <View className="mb-8">
-            <Text className="text-3xl font-bold text-[#5F5F5F]">Reservas recibidas</Text>
-            <Text className="mt-1 text-sm text-[#5F5F5F]/70">
+            <Text className="font-poppins text-3xl font-semibold text-[#1C1C1C]">Reservas recibidas</Text>
+            <Text className="mt-1 font-inter text-sm text-[#595959]">
               Administra las reservas realizadas sobre tus propiedades
             </Text>
           </View>
@@ -610,69 +612,69 @@ export function ReservasArrendatario() {
           {/* Tarjetas de Resumen Numérico */}
           <View className="mb-6 flex-row flex-wrap justify-between gap-3">
             {/* Pendientes */}
-            <View className="w-[48%] rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-none">
+            <View className="w-[48%] rounded-xl border border-[#DCDCDC] bg-[#F5F2EC] p-4 shadow-none">
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-medium uppercase tracking-wide text-[#5F5F5F]/65">
+                  <Text className="font-inter-medium text-xs uppercase tracking-wide text-[#595959]">
                     Pendientes
                   </Text>
-                  <Text className="mt-1 text-2xl font-semibold text-[#5F5F5F]">
+                  <Text className="mt-1 font-poppins text-2xl font-semibold text-[#1C1C1C]">
                     {reservationSummary.pendientes}
                   </Text>
                 </View>
-                <Clock3 size={24} color="#A67C52" />
+                <Clock3 size={24} color="#B87333" />
               </View>
             </View>
 
             {/* Confirmadas */}
-            <View className="w-[48%] rounded-xl border border-[#6B8E23]/15 bg-white p-4 shadow-none">
+            <View className="w-[48%] rounded-xl border border-[#DCDCDC] bg-white p-4 shadow-none">
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-medium uppercase tracking-wide text-[#5F5F5F]/65">
+                  <Text className="font-inter-medium text-xs uppercase tracking-wide text-[#595959]">
                     Confirmadas
                   </Text>
-                  <Text className="mt-1 text-2xl font-semibold text-[#5F5F5F]">
+                  <Text className="mt-1 font-poppins text-2xl font-semibold text-[#1C1C1C]">
                     {reservationSummary.confirmadas}
                   </Text>
                 </View>
-                <CheckCircle size={24} color="#6B8E23" />
+                <CheckCircle size={24} color="#B8860B" />
               </View>
             </View>
 
             {/* Rechazadas / Canceladas */}
-            <View className="w-[48%] rounded-xl border border-[#5F5F5F]/10 bg-white p-4 shadow-none">
+            <View className="w-[48%] rounded-xl border border-[#DCDCDC] bg-white p-4 shadow-none">
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-medium uppercase tracking-wide text-[#5F5F5F]/65">
+                  <Text className="font-inter-medium text-xs uppercase tracking-wide text-[#595959]">
                     Rechazadas/Canceladas
                   </Text>
-                  <Text className="mt-1 text-2xl font-semibold text-[#5F5F5F]">
+                  <Text className="mt-1 font-poppins text-2xl font-semibold text-[#1C1C1C]">
                     {reservationSummary.finalizadas}
                   </Text>
                 </View>
-                <XCircle size={24} color="#A67C52" />
+                <XCircle size={24} color="#B87333" />
               </View>
             </View>
 
             {/* Total estimado */}
-            <View className="w-[48%] rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF] p-4 shadow-none">
+            <View className="w-[48%] rounded-xl border border-[#DCDCDC] bg-[#F5F2EC] p-4 shadow-none">
               <View className="flex-row items-center justify-between">
                 <View>
-                  <Text className="text-xs font-medium uppercase tracking-wide text-[#5F5F5F]/65">
+                  <Text className="font-inter-medium text-xs uppercase tracking-wide text-[#595959]">
                     Total estimado
                   </Text>
-                  <Text className="mt-1 text-lg font-semibold text-[#6B8E23]">
+                  <Text className="mt-1 font-poppins text-lg font-semibold text-[#B8860B]">
                     {formatPrice(reservationSummary.totalEstimado)}
                   </Text>
                 </View>
-                <CircleDollarSign size={24} color="#6B8E23" />
+                <CircleDollarSign size={24} color="#B8860B" />
               </View>
             </View>
           </View>
 
           {/* Filtros horizontales */}
           {reservas.length > 0 && (
-            <View className="mb-6 rounded-xl border border-[#6B8E23]/10 bg-white p-2">
+            <View className="mb-6 rounded-xl border border-[#DCDCDC] bg-white p-2">
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
                 {FILTERS.map((filter) => {
                   const isActive = activeFilter === filter.value;
@@ -680,13 +682,13 @@ export function ReservasArrendatario() {
                     <TouchableOpacity
                       key={filter.value}
                       onPress={() => setActiveFilter(filter.value)}
-                      className={`mr-2 rounded-lg px-4 py-2 ${
-                        isActive ? 'bg-[#6B8E23]' : 'bg-transparent'
+                      className={`mr-2 min-h-[40px] justify-center rounded-lg px-4 py-2 ${
+                        isActive ? 'bg-[#B8860B]' : 'bg-transparent'
                       }`}
                     >
                       <Text
-                        className={`text-sm font-medium ${
-                          isActive ? 'text-white' : 'text-[#5F5F5F]'
+                        className={`font-inter-medium text-sm ${
+                          isActive ? 'text-white' : 'text-[#1C1C1C]'
                         }`}
                       >
                         {filter.label}
@@ -782,8 +784,8 @@ export function ReservasArrendatario() {
                         ? `reserva-${parsedReservaId}`
                         : `${reserva.id_propiedad || 'prop'}-${reserva.id_inquilino || 'inq'}-${reserva.fecha_inicio || 'fecha'}-${reserva.fecha_fin || 'fin'}-${index}`
                     }
-                    className={`overflow-hidden rounded-3xl border border-[#6B8E23]/10 shadow-sm p-5 ${
-                      styles.bg || styles.card
+                    className={`overflow-hidden rounded-2xl border shadow-sm p-5 ${
+                      styles.card
                     }`}
                   >
                     {/* Tarjeta Interna */}
@@ -796,10 +798,10 @@ export function ReservasArrendatario() {
                           resizeMode="cover"
                         />
                         <View className="mt-3">
-                          <Text className="text-xs font-medium text-[#5F5F5F]/70">Propiedad</Text>
+                          <Text className="font-inter-medium text-xs text-[#595959]">Propiedad</Text>
                           <Text
                             numberOfLines={2}
-                            className="mt-1 text-lg font-semibold text-[#5F5F5F]"
+                            className="mt-1 font-poppins text-lg font-semibold text-[#1C1C1C]"
                           >
                             {tituloPropiedad}
                           </Text>
@@ -807,34 +809,34 @@ export function ReservasArrendatario() {
                       </View>
 
                       {/* Datos del Inquilino */}
-                      <View className="space-y-3 rounded-xl bg-white/55 p-4">
+                      <View className="space-y-3 rounded-xl border border-[#DCDCDC] bg-[#FAFAFA] p-4">
                         <View className="mb-2">
                           <View className="mb-1 flex-row items-center gap-2">
-                            <UserRound size={16} color="#A67C52" />
-                            <Text className="text-xs font-medium text-[#5F5F5F]/70">
+                            <UserRound size={16} color="#B87333" />
+                            <Text className="font-inter-medium text-xs text-[#595959]">
                               Inquilino
                             </Text>
                           </View>
-                          <Text className="font-semibold text-[#5F5F5F]">{nombreInquilino}</Text>
+                          <Text className="font-inter-semibold text-[#1C1C1C]">{nombreInquilino}</Text>
                         </View>
 
                         <View className="mb-2">
                           <View className="mb-1 flex-row items-center gap-2">
-                            <Mail size={16} color="#A67C52" />
-                            <Text className="text-xs font-medium text-[#5F5F5F]/70">Correo</Text>
+                            <Mail size={16} color="#B87333" />
+                            <Text className="font-inter-medium text-xs text-[#595959]">Correo</Text>
                           </View>
-                          <Text className="text-sm text-[#5F5F5F]">{correoInquilino}</Text>
+                          <Text className="font-inter text-sm text-[#1C1C1C]">{correoInquilino}</Text>
                         </View>
 
                         {telefonoInquilino && (
                           <View>
                             <View className="mb-1 flex-row items-center gap-2">
-                              <Phone size={16} color="#A67C52" />
-                              <Text className="text-xs font-medium text-[#5F5F5F]/70">
+                              <Phone size={16} color="#B87333" />
+                              <Text className="font-inter-medium text-xs text-[#595959]">
                                 Teléfono
                               </Text>
                             </View>
-                            <Text className="text-sm text-[#5F5F5F]">{telefonoInquilino}</Text>
+                            <Text className="font-inter text-sm text-[#1C1C1C]">{telefonoInquilino}</Text>
                           </View>
                         )}
                       </View>
@@ -844,22 +846,22 @@ export function ReservasArrendatario() {
                         <View className="flex-row justify-between mb-3">
                           <View className="flex-1 mr-2">
                             <View className="mb-1 flex-row items-center gap-1">
-                              <Calendar size={16} color="#A67C52" />
-                              <Text className="text-xs font-medium text-[#5F5F5F]/70">Fechas</Text>
+                              <Calendar size={16} color="#B87333" />
+                              <Text className="font-inter-medium text-xs text-[#595959]">Fechas</Text>
                             </View>
-                            <Text className="text-sm font-medium text-[#5F5F5F]">
+                            <Text className="font-inter-medium text-sm text-[#1C1C1C]">
                               {displayFechaInicio} - {displayFechaFin}
                             </Text>
-                            <Text className="text-xs text-[#5F5F5F]/60">{nights} noche(s)</Text>
+                            <Text className="font-inter text-xs text-[#595959]">{nights} noche(s)</Text>
                           </View>
 
                           <View className="items-end">
                             <View className="mb-1 flex-row items-center gap-1">
-                              <DollarSign size={12} color="#5F5F5F" />
-                              <CircleDollarSign size={16} color="#A67C52" />
-                              <Text className="text-xs font-medium text-[#5F5F5F]/70">Total</Text>
+                              <DollarSign size={12} color="#1C1C1C" />
+                              <CircleDollarSign size={16} color="#B87333" />
+                              <Text className="font-inter-medium text-xs text-[#595959]">Total</Text>
                             </View>
-                            <Text className="text-lg font-bold text-[#6B8E23]">
+                            <Text className="font-poppins text-lg font-semibold text-[#B8860B]">
                               {formatPrice(totalReserva)}
                             </Text>
                           </View>
@@ -870,14 +872,14 @@ export function ReservasArrendatario() {
                           <View
                             className={`rounded-full border px-3 py-1 ${styles.badge}`}
                           >
-                            <Text className="text-xs font-semibold">
+                            <Text className="font-inter-semibold text-xs text-[#1C1C1C]">
                               {styles.label || reserva.estado}
                             </Text>
                           </View>
 
                           {estadoPago && (
-                            <View className="rounded-full border border-[#A67C52]/20 bg-white px-3 py-1">
-                              <Text className="text-xs font-semibold text-[#5F5F5F]">
+                            <View className="rounded-full border border-[#DCDCDC] bg-white px-3 py-1">
+                              <Text className="font-inter-semibold text-xs text-[#1C1C1C]">
                                 Pago: {estadoPago}
                               </Text>
                             </View>
@@ -885,8 +887,8 @@ export function ReservasArrendatario() {
                         </View>
 
                         {/* Aviso Contrato */}
-                        <View className="rounded-lg bg-white/60 px-3 py-2">
-                          <Text className="text-xs leading-5 text-[#5F5F5F]/70">
+                        <View className="rounded-lg border border-[#DCDCDC] bg-white px-3 py-2">
+                          <Text className="font-inter text-xs leading-5 text-[#595959]">
                             {isReservaPaid
                               ? 'Pago confirmado mediante PayPal. La constancia de reserva ya se encuentra activa.'
                               : 'El contrato se generará después del flujo de pago.'}
@@ -895,7 +897,7 @@ export function ReservasArrendatario() {
 
                         {!hasValidReservationId && (
                           <View className="rounded-lg border border-red-200 bg-red-50 p-2">
-                            <Text className="text-xs text-red-700">
+                            <Text className="font-inter text-xs text-red-700">
                               Esta reserva no tiene id_reserva válido. No se pueden ejecutar acciones.
                             </Text>
                           </View>
@@ -914,14 +916,14 @@ export function ReservasArrendatario() {
                                   disabled={
                                     !hasValidReservationId || processingId === parsedReservaId
                                   }
-                                  className={`flex-1 h-10 flex-row items-center justify-center rounded-xl bg-[#6B8E23] px-3 active:bg-[#5a7a1e] ${
+                                  className={`flex-1 min-h-[48px] flex-row items-center justify-center rounded-xl bg-[#B8860B] px-3 active:bg-[#9A6F09] ${
                                     !hasValidReservationId || processingId === parsedReservaId
                                       ? 'opacity-60'
                                       : ''
                                   }`}
                                 >
                                   <CheckCircle size={16} color="#ffffff" />
-                                  <Text className="ml-2 font-medium text-white">Confirmar</Text>
+                                  <Text className="ml-2 font-inter-medium text-white">Confirmar</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
@@ -929,14 +931,14 @@ export function ReservasArrendatario() {
                                   disabled={
                                     !hasValidReservationId || processingId === parsedReservaId
                                   }
-                                  className={`flex-1 h-10 flex-row items-center justify-center rounded-xl bg-red-600 px-3 active:bg-red-700 ${
+                                  className={`flex-1 min-h-[48px] flex-row items-center justify-center rounded-xl bg-[#DC2626] px-3 active:bg-[#B91C1C] ${
                                     !hasValidReservationId || processingId === parsedReservaId
                                       ? 'opacity-60'
                                       : ''
                                   }`}
                                 >
                                   <XCircle size={16} color="#ffffff" />
-                                  <Text className="ml-2 font-medium text-white">Rechazar</Text>
+                                  <Text className="ml-2 font-inter-medium text-white">Rechazar</Text>
                                 </TouchableOpacity>
                               </View>
                             )}
@@ -947,14 +949,14 @@ export function ReservasArrendatario() {
                                 disabled={
                                   !hasValidReservationId || processingId === parsedReservaId
                                 }
-                                className={`h-10 flex-row items-center justify-center rounded-xl bg-[#A67C52] px-3 active:bg-[#8f6844] ${
+                                className={`min-h-[48px] flex-row items-center justify-center rounded-xl bg-[#B87333] px-3 active:bg-[#9A5E28] ${
                                   !hasValidReservationId || processingId === parsedReservaId
                                     ? 'opacity-60'
                                     : ''
                                 }`}
                               >
                                 <AlertCircle size={16} color="#ffffff" />
-                                <Text className="ml-2 font-medium text-white">
+                                <Text className="ml-2 font-inter-medium text-white">
                                   {processingId === parsedReservaId
                                     ? 'Procesando...'
                                     : 'Cancelar reserva'}
@@ -973,6 +975,8 @@ export function ReservasArrendatario() {
         </View>
       </ScrollView>
 
+      <BottomTabBar />
+
       {/* Modal de Confirmar / Rechazar Acción */}
       <Modal
         visible={Boolean(pendingAction && !isCancellingAction)}
@@ -980,11 +984,11 @@ export function ReservasArrendatario() {
         animationType="fade"
         onRequestClose={closeActionModal}
       >
-        <View className="flex-1 items-center justify-center bg-black/40 px-4 py-6">
-          <View className="w-full max-w-md rounded-xl border border-[#A67C52]/20 bg-[#F2E8CF] p-6 shadow-xl">
+        <View className="flex-1 items-center justify-center bg-black/45 px-4 py-6">
+          <View className="w-full max-w-md rounded-2xl border border-[#DCDCDC] bg-white p-6 shadow-xl">
             <View className="mb-5">
-              <Text className="text-xl font-semibold text-[#5F5F5F]">{modalTitle}</Text>
-              <Text className="mt-2 text-sm leading-6 text-[#5F5F5F]/80">{modalMessage}</Text>
+              <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">{modalTitle}</Text>
+              <Text className="mt-2 font-inter text-sm leading-6 text-[#595959]">{modalMessage}</Text>
             </View>
 
             {actionFeedback.text ? (
@@ -998,7 +1002,7 @@ export function ReservasArrendatario() {
 
             {actionFeedback.type !== 'success' && (isRejectingAction || isCancellingAction) && (
               <View className="mb-5">
-                <Text className="text-sm font-medium text-[#5F5F5F] mb-1">
+                <Text className="font-inter-medium text-sm text-[#1C1C1C] mb-1">
                   {isCancellingAction
                     ? 'Motivo de la cancelación (obligatorio)'
                     : 'Motivo del rechazo (obligatorio)'}
@@ -1020,8 +1024,8 @@ export function ReservasArrendatario() {
                       ? 'Ej: El inquilino solicitó cancelar, hubo un imprevisto con la propiedad, etc.'
                       : 'Escribe un motivo breve si deseas conservarlo para seguimiento interno.'
                   }
-                  placeholderTextColor="#5F5F5F70"
-                  className="mt-2 h-28 w-full rounded-xl border border-[#A67C52]/25 bg-white p-3 text-sm text-[#5F5F5F]"
+                  placeholderTextColor="#7A7A7A"
+                  className="mt-2 h-28 w-full rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] bg-[#FAFAFA] p-3 font-inter text-sm text-[#1C1C1C]"
                 />
               </View>
             )}
@@ -1030,9 +1034,9 @@ export function ReservasArrendatario() {
               <TouchableOpacity
                 onPress={closeActionModal}
                 disabled={Boolean(processingId)}
-                className="h-10 items-center justify-center rounded-xl border-2 border-[#6B8E23] bg-white px-4 active:bg-[#FAFAFA]"
+                className="min-h-[48px] items-center justify-center rounded-xl border-[1.5px] border-[#B8860B] bg-white px-4 active:bg-[#FAFAFA]"
               >
-                <Text className="font-medium text-[#6B8E23]">
+                <Text className="font-inter-medium text-[#B8860B]">
                   {actionFeedback.type === 'success' ? 'Cerrar' : 'Cancelar'}
                 </Text>
               </TouchableOpacity>
@@ -1041,12 +1045,12 @@ export function ReservasArrendatario() {
                 <TouchableOpacity
                   onPress={confirmPendingAction}
                   disabled={Boolean(processingId) || (isRejectingAction && !rejectReason.trim())}
-                  className={`h-10 flex-row items-center justify-center rounded-xl px-4 ${
+                  className={`min-h-[48px] flex-row items-center justify-center rounded-xl px-4 ${
                     isConfirmingAction
-                      ? 'bg-[#6B8E23] active:bg-[#5a7a1e]'
+                      ? 'bg-[#B8860B] active:bg-[#9A6F09]'
                       : isRejectingAction
-                        ? 'bg-red-600 active:bg-red-700'
-                        : 'bg-[#A67C52] active:bg-[#8f6844]'
+                        ? 'bg-[#DC2626] active:bg-[#B91C1C]'
+                        : 'bg-[#B87333] active:bg-[#9A5E28]'
                   } ${
                     Boolean(processingId) || (isRejectingAction && !rejectReason.trim())
                       ? 'opacity-60'
@@ -1060,7 +1064,7 @@ export function ReservasArrendatario() {
                   ) : (
                     <XCircle size={16} color="#ffffff" />
                   )}
-                  <Text className="ml-2 font-medium text-white">{modalConfirmLabel}</Text>
+                  <Text className="ml-2 font-inter-medium text-white">{modalConfirmLabel}</Text>
                 </TouchableOpacity>
               )}
             </View>

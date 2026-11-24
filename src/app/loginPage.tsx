@@ -21,7 +21,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BottomTabBar } from "@/components/BottomTabBar";
 import { Header } from "@/components/header";
+import { Input } from "@/components/input";
 import { authController } from "../controllers/authController";
 import { authService } from "../services/authService";
 import { hasValidId, pickValidId } from "@/utils/sessionRole";
@@ -467,7 +469,7 @@ export default function LoginPage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <Header />
 
@@ -477,14 +479,14 @@ export default function LoginPage() {
         showsVerticalScrollIndicator={false}
         className="flex-1 bg-[#FAFAFA]"
       >
-        <View className="flex-1 items-center justify-center px-5 py-10">
+        <View className="flex-1 items-center justify-center px-5 py-8">
           {/* Card principal */}
-          <View className="w-full max-w-md p-6 bg-white border border-[#6B8E23]/15 shadow-sm rounded-3xl">
-            <View className="items-center mb-8">
-              <Text className="font-bold text-3xl text-[#5F5F5F] mb-2 text-center">
+          <View className="w-full max-w-md p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
+            <View className="items-center mb-7">
+              <Text className="font-poppins font-semibold text-3xl text-[#1C1C1C] mb-2 text-center">
                 Bienvenido de nuevo
               </Text>
-              <Text className="text-[#5F5F5F]/70 text-base text-center">
+              <Text className="font-inter text-[#595959] text-base text-center">
                 Inicia sesión para continuar
               </Text>
             </View>
@@ -492,82 +494,73 @@ export default function LoginPage() {
             {step === "credentials" ? (
               <View>
                 {/* Campo Correo */}
-                <View className="mb-4">
-                  <Text className="text-[#5F5F5F] font-medium mb-1.5">
-                    Correo electrónico
-                  </Text>
-                  <View className="relative justify-center">
-                    <View className="absolute left-4 z-10">
-                      <Mail color="#A67C52" size={20} />
-                    </View>
-                    <TextInput
-                      id="email"
-                      autoCapitalize="none"
-                      keyboardType="email-address"
-                      placeholder="correo@ejemplo.com"
-                      placeholderTextColor="#5F5F5F55"
-                      value={email}
-                      onChangeText={setEmail}
-                      className="pl-12 pr-4 h-12 bg-[#FAFAFA] border border-[#6B8E23]/20 focus:border-[#6B8E23] rounded-xl text-[#5F5F5F]"
-                    />
-                  </View>
-                </View>
+                <Input
+                  id="email"
+                  label="Correo electrónico"
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChangeText={setEmail}
+                  leftIcon={<Mail color="#B87333" size={20} />}
+                  containerClassName="mb-4"
+                />
 
                 {/* Campo Contraseña */}
-                <View className="mb-4">
-                  <Text className="text-[#5F5F5F] font-medium mb-1.5">
-                    Contraseña
-                  </Text>
-                  <View className="relative justify-center">
-                    <View className="absolute left-4 z-10">
-                      <Lock color="#A67C52" size={20} />
-                    </View>
-                    <TextInput
-                      id="password"
-                      secureTextEntry={!showPassword}
-                      placeholder="Escribe tu contraseña"
-                      placeholderTextColor="#5F5F5F55"
-                      value={password}
-                      onChangeText={setPassword}
-                      className="pl-12 pr-12 h-12 bg-[#FAFAFA] border border-[#6B8E23]/20 focus:border-[#6B8E23] rounded-xl text-[#5F5F5F]"
-                    />
+                <Input
+                  id="password"
+                  label="Contraseña"
+                  type={showPassword ? "text" : "password"}
+                  secureTextEntry={!showPassword}
+                  placeholder="Escribe tu contraseña"
+                  value={password}
+                  onChangeText={setPassword}
+                  leftIcon={<Lock color="#B87333" size={20} />}
+                  rightElement={
                     <TouchableOpacity
                       onPress={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 z-10 p-1"
+                      className="p-1.5"
+                      accessibilityLabel={
+                        showPassword ? "Ocultar contraseña" : "Ver contraseña"
+                      }
                     >
                       {showPassword ? (
-                        <EyeOff color="#5F5F5F88" size={20} />
+                        <EyeOff color="#595959" size={20} />
                       ) : (
-                        <Eye color="#5F5F5F88" size={20} />
+                        <Eye color="#595959" size={20} />
                       )}
                     </TouchableOpacity>
-                  </View>
-                </View>
+                  }
+                  containerClassName="mb-4"
+                />
 
                 {/* Recordarme & Olvidé contraseña */}
                 <View className="flex-row items-center justify-between mb-6 mt-1">
                   <TouchableOpacity
                     onPress={() => setRememberMe(!rememberMe)}
-                    className="flex-row items-center gap-2"
+                    className="flex-row items-center gap-2 min-h-[44px]"
                   >
                     <View
-                      className={`w-5 h-5 rounded border border-[#6B8E23]/40 items-center justify-center ${
-                        rememberMe ? "bg-[#6B8E23]" : "bg-[#FAFAFA]"
+                      className={`w-5 h-5 rounded border items-center justify-center ${
+                        rememberMe
+                          ? "bg-[#B8860B] border-[#B8860B]"
+                          : "bg-[#FAFAFA] border-[#DCDCDC]"
                       }`}
                     >
                       {rememberMe && (
                         <Text className="text-white text-xs font-bold">✓</Text>
                       )}
                     </View>
-                    <Text className="text-[#5F5F5F] text-sm">Recordarme</Text>
+                    <Text className="font-inter text-[#1C1C1C] text-sm">
+                      Recordarme
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={() => router.push("/forgotPassword" as any)}
-                    className="flex-row items-center py-1.5 px-2.5 rounded-lg bg-[#6B8E23]/10"
+                    className="min-h-[44px] flex-row items-center py-2 px-3 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]"
                   >
-                    <Key color="#6B8E23" size={14} />
-                    <Text className="text-[#6B8E23] font-medium text-xs ml-1.5">
+                    <Key color="#B87333" size={15} />
+                    <Text className="font-inter-medium text-[#B8860B] text-xs ml-1.5">
                       Olvidé mi contraseña
                     </Text>
                   </TouchableOpacity>
@@ -575,14 +568,14 @@ export default function LoginPage() {
               </View>
             ) : (
               <View className="items-center mb-6">
-                <View className="mb-3">
-                  <ShieldCheck color="#6B8E23" size={48} />
+                <View className="mb-3 h-14 w-14 rounded-full bg-[#B8860B]/15 items-center justify-center">
+                  <ShieldCheck color="#B8860B" size={32} />
                 </View>
                 <View className="items-center mb-4">
-                  <Text className="font-semibold text-xl text-[#5F5F5F] text-center mb-1">
+                  <Text className="font-poppins font-semibold text-xl text-[#1C1C1C] text-center mb-1">
                     Verificación en dos pasos
                   </Text>
-                  <Text className="text-sm text-[#5F5F5F]/75 text-center">
+                  <Text className="font-inter text-sm text-[#595959] text-center">
                     Ingresa el código de 6 dígitos enviado a {email}.
                   </Text>
                 </View>
@@ -592,12 +585,12 @@ export default function LoginPage() {
                   keyboardType="numeric"
                   maxLength={6}
                   placeholder="000000"
-                  placeholderTextColor="#5F5F5F55"
+                  placeholderTextColor="#7A7A7A"
                   value={verificationCode}
                   onChangeText={(text) =>
                     setVerificationCode(text.replace(/\D/g, ""))
                   }
-                  className="w-full h-14 text-center text-2xl tracking-[0.4em] bg-[#FAFAFA] border border-[#6B8E23]/20 rounded-xl text-[#5F5F5F] font-semibold mb-4"
+                  className="w-full h-14 text-center text-2xl tracking-[0.4em] bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] rounded-xl text-[#1C1C1C] font-poppins font-semibold mb-4"
                 />
 
                 <TouchableOpacity
@@ -608,9 +601,9 @@ export default function LoginPage() {
                     setPendingRole("");
                     setError("");
                   }}
-                  className="py-2 px-4 rounded-lg bg-[#6B8E23]/10"
+                  className="min-h-[44px] justify-center py-2 px-4 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]"
                 >
-                  <Text className="text-[#6B8E23] font-medium text-sm">
+                  <Text className="font-inter-medium text-[#B8860B] text-sm">
                     Volver al login
                   </Text>
                 </TouchableOpacity>
@@ -621,7 +614,7 @@ export default function LoginPage() {
             <TouchableOpacity
               disabled={isLoading}
               onPress={handleSubmit}
-              className={`w-full bg-[#6B8E23] h-12 rounded-xl flex-row items-center justify-center mt-2 ${
+              className={`w-full bg-[#B8860B] active:bg-[#9A6F09] min-h-[48px] rounded-xl flex-row items-center justify-center mt-2 ${
                 isLoading ? "opacity-50" : ""
               }`}
             >
@@ -629,7 +622,7 @@ export default function LoginPage() {
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
-                  <Text className="text-white font-medium text-base mr-2">
+                  <Text className="font-inter-medium text-white text-base mr-2">
                     {step === "credentials"
                       ? "Iniciar sesión"
                       : "Verificar y entrar"}
@@ -641,26 +634,29 @@ export default function LoginPage() {
 
             {/* Alerta de Error */}
             {error ? (
-              <View className="flex-row items-center p-3 bg-red-50 border border-red-200 rounded-xl mt-4">
+              <View className="flex-row items-center p-3.5 bg-red-50 border border-red-200 rounded-xl mt-4">
                 <AlertCircle color="#DC2626" size={18} />
-                <Text className="text-red-800 text-sm ml-2 flex-1">
+                <Text className="font-inter text-red-800 text-sm ml-2 flex-1">
                   {error}
                 </Text>
               </View>
             ) : null}
 
-            <Text className="text-xs text-center text-[#5F5F5F]/70 mt-4">
+            <Text className="font-inter text-xs text-center text-[#595959] mt-4">
               El acceso es válido para huéspedes (inquilinos) y anfitriones
             </Text>
 
             {/* Registro link */}
-            <View className="mt-8 items-center">
+            <View className="mt-7 items-center">
               <View className="flex-row items-center">
-                <Text className="text-[#5F5F5F]">¿No tienes cuenta? </Text>
+                <Text className="font-inter text-[#1C1C1C]">
+                  ¿No tienes cuenta?{" "}
+                </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/registerPage" as any)}
+                  className="min-h-[44px] justify-center px-1"
                 >
-                  <Text className="text-[#6B8E23] font-medium">
+                  <Text className="font-inter-semibold text-[#B8860B]">
                     Regístrate aquí
                   </Text>
                 </TouchableOpacity>
@@ -669,6 +665,8 @@ export default function LoginPage() {
           </View>
         </View>
       </ScrollView>
+
+      <BottomTabBar />
     </SafeAreaView>
   );
 }

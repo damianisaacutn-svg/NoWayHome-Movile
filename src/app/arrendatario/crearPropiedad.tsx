@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   Home,
   ImagePlus,
@@ -35,8 +36,10 @@ import {
   resolveUserRole,
   type SessionUserLike,
 } from "@/utils/sessionRole";
+import { BottomTabBar } from "../../components/BottomTabBar";
 import { HeaderArrendatario } from "../../components/headerArrendatario";
 import { PropertyLocationMap } from "../../components/locacionPropiedadMap";
+import { StepIndicator } from "../../components/StepIndicator";
 import { geocodeAddress } from "../../services/geocodeService";
 import { createProperty } from "../../services/propertyService";
 
@@ -190,6 +193,7 @@ export function CrearPropiedad() {
   const [form, setForm] = useState<PropertyFormState>(initialForm);
   const [images, setImages] = useState<SelectedImage[]>([]);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -418,6 +422,65 @@ export function CrearPropiedad() {
     setErrors((current) => ({ ...current, imagenes: "" }));
   };
 
+  const validateStep = (targetStep: number): FormErrors => {
+    const nextErrors: FormErrors = {};
+
+    if (targetStep === 0) {
+      if (!form.titulo.trim()) nextErrors.titulo = "El título es obligatorio.";
+      if (!form.descripcion.trim())
+        nextErrors.descripcion = "La descripción es obligatoria.";
+    } else if (targetStep === 1) {
+      if (!form.direccion.trim())
+        nextErrors.direccion = "La dirección es obligatoria.";
+      if (!form.ciudad.trim()) nextErrors.ciudad = "La ciudad es obligatoria.";
+      if (!form.pais.trim()) nextErrors.pais = "El país es obligatorio.";
+      if (!isValidOptionalCoordinate(form.latitud, -90, 90)) {
+        nextErrors.latitud = "La latitud debe estar entre -90 y 90.";
+      }
+      if (!isValidOptionalCoordinate(form.longitud, -180, 180)) {
+        nextErrors.longitud = "La longitud debe estar entre -180 y 180.";
+      }
+    } else if (targetStep === 2) {
+      if (!allowedPriceTypes.includes(form.tipo_precio)) {
+        nextErrors.tipo_precio = "El tipo de precio no es válido.";
+      }
+      if (Number(form.precio_por_noche) <= 0) {
+        nextErrors.precio_por_noche =
+          form.tipo_precio === "mensual"
+            ? "El precio mensual debe ser mayor a 0."
+            : "El precio por noche debe ser mayor a 0.";
+      }
+      if (form.capacidad !== "" && Number(form.capacidad) <= 0) {
+        nextErrors.capacidad = "La capacidad debe ser mayor a 0.";
+      }
+      if (
+        form.numero_habitaciones !== "" &&
+        (!Number.isInteger(Number(form.numero_habitaciones)) ||
+          Number(form.numero_habitaciones) < 0)
+      ) {
+        nextErrors.numero_habitaciones =
+          "El número de habitaciones debe ser mayor o igual a 0.";
+      }
+      if (
+        form.numero_banos !== "" &&
+        (!Number.isInteger(Number(form.numero_banos)) ||
+          Number(form.numero_banos) < 0)
+      ) {
+        nextErrors.numero_banos =
+          "El número de baños debe ser mayor o igual a 0.";
+      }
+    }
+
+    return nextErrors;
+  };
+
+  const handleNextStep = () => {
+    const stepErrors = validateStep(step);
+    setErrors((prev) => ({ ...prev, ...stepErrors }));
+    if (Object.values(stepErrors).some(Boolean)) return;
+    setStep((prev) => (prev < 3 ? ((prev + 1) as 0 | 1 | 2 | 3) : prev));
+  };
+
   const validateForm = (): FormErrors => {
     const nextErrors: FormErrors = {};
 
@@ -518,6 +581,7 @@ export function CrearPropiedad() {
       setForm(initialForm);
       setImages([]);
       setErrors({});
+      setStep(0);
       setIsSuccess(true);
       showActionMessage("success", "Propiedad registrada correctamente.");
     } catch (error: unknown) {
@@ -534,7 +598,14 @@ export function CrearPropiedad() {
 
   const renderError = (field: keyof FormErrors) => {
     if (!errors[field]) return null;
-    return <Text className="mt-1 text-sm text-red-700">{errors[field]}</Text>;
+    return (
+      <View className="mt-1.5 flex-row items-center gap-1.5">
+        <AlertCircle size={14} color="#DC2626" />
+        <Text className="flex-1 font-inter text-xs text-red-700">
+          {errors[field]}
+        </Text>
+      </View>
+    );
   };
 
   if (!authService.isAuthenticated() || shouldRedirectToTenant) return null;
@@ -545,12 +616,12 @@ export function CrearPropiedad() {
         <StatusBar style="dark" />
         <HeaderArrendatario />
         <View className="flex-1 px-6 justify-center items-center">
-          <View className="w-full max-w-md rounded-2xl bg-white border border-[#6B8E23]/15 p-6 items-center shadow-sm">
+          <View className="w-full max-w-md rounded-2xl bg-white border border-[#DCDCDC] p-6 items-center shadow-sm">
             <AlertCircle size={36} color="#DC2626" />
-            <Text className="mt-3 text-lg font-semibold text-[#5F5F5F] text-center">
+            <Text className="mt-3 font-poppins text-lg font-semibold text-[#1C1C1C] text-center">
               No se pudo validar tu cuenta de arrendatario
             </Text>
-            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+            <Text className="mt-2 font-inter text-sm text-[#595959] text-center leading-5">
               Vuelve a tu perfil o inicia sesión nuevamente para publicar una propiedad.
             </Text>
             <View className="mt-5 w-full flex-col gap-3">
@@ -558,24 +629,25 @@ export function CrearPropiedad() {
                 onPress={() =>
                   router.replace("/arrendatario/profileArrendatario" as any)
                 }
-                className="w-full rounded-xl bg-[#6B8E23] py-3 items-center"
+                className="min-h-[48px] justify-center w-full rounded-xl bg-[#B8860B] py-3 items-center"
               >
-                <Text className="text-white font-semibold">Volver al perfil</Text>
+                <Text className="font-inter-medium text-white">Volver al perfil</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   authService.logout();
                   router.replace("/loginPage" as any);
                 }}
-                className="w-full rounded-xl border-2 border-[#6B8E23] py-3 items-center"
+                className="min-h-[48px] justify-center w-full rounded-xl border-[1.5px] border-[#B8860B] py-3 items-center"
               >
-                <Text className="text-[#6B8E23] font-semibold">
+                <Text className="font-inter-medium text-[#B8860B]">
                   Volver a iniciar sesión
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -594,6 +666,7 @@ export function CrearPropiedad() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         className="flex-1 px-4 py-6"
+        keyboardShouldPersistTaps="handled"
       >
         <View className="w-full max-w-4xl mx-auto">
           {/* Botón Volver */}
@@ -601,422 +674,527 @@ export function CrearPropiedad() {
             onPress={() =>
               router.push("/arrendatario/profileArrendatario" as any)
             }
-            className="flex-row items-center mb-5 self-start py-2 px-3 rounded-xl bg-transparent active:bg-[#6B8E23]/10"
+            className="flex-row items-center mb-5 self-start min-h-[44px] py-2 px-3 rounded-xl bg-white border border-[#DCDCDC]"
           >
-            <ArrowLeft size={16} color="#6B8E23" />
-            <Text className="ml-2 font-medium text-[#6B8E23]">
+            <ArrowLeft size={16} color="#B87333" />
+            <Text className="ml-2 font-inter-medium text-[#1C1C1C]">
               Volver al perfil
             </Text>
           </TouchableOpacity>
 
           {/* Tarjeta Contenedora Principal */}
-          <View className="bg-[#F2E8CF] rounded-2xl p-6">
+          <View className="bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-sm">
             <View className="mb-6">
-              <View className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                <Home size={24} color="#6B8E23" />
+              <View className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]">
+                <Home size={24} color="#B8860B" />
               </View>
-              <Text className="text-2xl font-bold text-[#5F5F5F]">
+              <Text className="font-poppins text-2xl font-semibold text-[#1C1C1C]">
                 Agregar propiedad
               </Text>
-              <Text className="mt-2 text-sm text-[#5F5F5F]/80">
-                Completa la información de tu alojamiento para publicarlo en
-                NoWayHome.
+              <Text className="mt-2 font-inter text-sm text-[#595959]">
+                Completa la información de tu alojamiento paso a paso para publicarlo en NoWayHome.
               </Text>
             </View>
 
-            {/* SECCIÓN: Información Básica */}
-            <View className="mb-8">
-              <Text className="text-lg font-bold text-[#5F5F5F] mb-4">
-                Información básica
-              </Text>
+            <StepIndicator
+              steps={["Básico", "Ubicación", "Precio", "Fotos"]}
+              currentStep={step}
+              onStepPress={(idx) => setStep(idx as 0 | 1 | 2 | 3)}
+            />
 
+            {/* ETAPA 1: Información Básica */}
+            {step === 0 && (
               <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1">Título</Text>
-                <TextInput
-                  value={form.titulo}
-                  onChangeText={(val) => handleFieldChange("titulo", val)}
-                  placeholder="Ej. Casa acogedora cerca del centro"
-                  placeholderTextColor="#5F5F5F60"
-                  className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                />
-                {renderError("titulo")}
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1">
-                  Descripción
+                <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] mb-4">
+                  Información básica
                 </Text>
-                <TextInput
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  value={form.descripcion}
-                  onChangeText={(val) => handleFieldChange("descripcion", val)}
-                  placeholder="Describe las comodidades, reglas y atractivos del lugar..."
-                  placeholderTextColor="#5F5F5F60"
-                  className="min-h-[100px] bg-white border border-[#6B8E23]/20 text-[#5F5F5F] p-4 rounded-xl"
-                />
-                {renderError("descripcion")}
-              </View>
-            </View>
 
-            {/* SECCIÓN: Ubicación */}
-            <View className="mb-8">
-              <Text className="text-lg font-bold text-[#5F5F5F] mb-4">
-                Ubicación
-              </Text>
-
-              <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1">
-                  Dirección
-                </Text>
-                <TextInput
-                  value={form.direccion}
-                  onChangeText={(val) => handleFieldChange("direccion", val)}
-                  placeholder="Calle, número exterior/interior"
-                  placeholderTextColor="#5F5F5F60"
-                  className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                />
-                {renderError("direccion")}
-              </View>
-
-              <View className="flex-row gap-3 mb-4">
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">
-                    Ciudad
+                <View className="mb-4">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                    Título
                   </Text>
                   <TextInput
-                    value={form.ciudad}
-                    onChangeText={(val) => handleFieldChange("ciudad", val)}
-                    placeholder="Ciudad"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                    value={form.titulo}
+                    onChangeText={(val) => handleFieldChange("titulo", val)}
+                    placeholder="Ej. Casa acogedora cerca del centro"
+                    placeholderTextColor="#7A7A7A"
+                    className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                   />
-                  {renderError("ciudad")}
+                  {renderError("titulo")}
                 </View>
 
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">País</Text>
-                  <TextInput
-                    value={form.pais}
-                    onChangeText={(val) => handleFieldChange("pais", val)}
-                    placeholder="País"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                  />
-                  {renderError("pais")}
-                </View>
-              </View>
-
-              {/* Botón Buscar Ubicación */}
-              <TouchableOpacity
-                onPress={handleSearchLocation}
-                disabled={geocodeState.isLoading}
-                className="flex-row items-center justify-center bg-[#6B8E23] h-12 rounded-xl mb-4 px-4"
-              >
-                {geocodeState.isLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <>
-                    <Search size={16} color="#fff" />
-                    <Text className="ml-2 text-white font-medium">
-                      Buscar ubicación
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {geocodeState.message ? (
-                <View
-                  className={`p-3 rounded-xl mb-4 flex-row items-center border ${
-                    geocodeState.type === "success"
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                  }`}
-                >
-                  {geocodeState.type === "success" ? (
-                    <CheckCircle2 size={16} color="#15803d" />
-                  ) : (
-                    <AlertCircle size={16} color="#b91c1c" />
-                  )}
-                  <Text
-                    className={`ml-2 text-xs flex-1 ${
-                      geocodeState.type === "success"
-                        ? "text-green-800"
-                        : "text-red-800"
-                    }`}
-                  >
-                    {geocodeState.message}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Mapa */}
-              <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1">
-                  Mapa de ubicación
-                </Text>
-                <PropertyLocationMap
-                  editable
-                  latitud={form.latitud}
-                  longitud={form.longitud}
-                  direccion={[form.direccion, form.ciudad, form.pais]
-                    .map((value) => value.trim())
-                    .filter(Boolean)
-                    .join(", ")}
-                  onChange={handleLocationChange}
-                />
-              </View>
-
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">
-                    Latitud
+                <View className="mb-6">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                    Descripción
                   </Text>
                   <TextInput
-                    keyboardType="numeric"
-                    value={form.latitud}
-                    onChangeText={(val) => handleFieldChange("latitud", val)}
-                    placeholder="0.000000"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    value={form.descripcion}
+                    onChangeText={(val) => handleFieldChange("descripcion", val)}
+                    placeholder="Describe las comodidades, reglas y atractivos del lugar..."
+                    placeholderTextColor="#7A7A7A"
+                    className="min-h-[112px] bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter text-[#1C1C1C] p-4 rounded-xl"
                   />
-                  {renderError("latitud")}
-                </View>
-
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">
-                    Longitud
-                  </Text>
-                  <TextInput
-                    keyboardType="numeric"
-                    value={form.longitud}
-                    onChangeText={(val) => handleFieldChange("longitud", val)}
-                    placeholder="0.000000"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                  />
-                  {renderError("longitud")}
-                </View>
-              </View>
-            </View>
-
-            {/* SECCIÓN: Capacidad y Precio */}
-            <View className="mb-8">
-              <Text className="text-lg font-bold text-[#5F5F5F] mb-4">
-                Capacidad y precio
-              </Text>
-
-              {/* Selector de Tipo de Precio */}
-              <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-2">
-                  Tipo de precio
-                </Text>
-                <View className="flex-row bg-white p-1 rounded-xl border border-[#6B8E23]/20">
-                  <TouchableOpacity
-                    onPress={() => handleFieldChange("tipo_precio", "noche")}
-                    className={`flex-1 py-2.5 rounded-lg items-center ${
-                      form.tipo_precio === "noche"
-                        ? "bg-[#6B8E23]"
-                        : "bg-transparent"
-                    }`}
-                  >
-                    <Text
-                      className={`font-medium ${
-                        form.tipo_precio === "noche"
-                          ? "text-white"
-                          : "text-[#5F5F5F]"
-                      }`}
-                    >
-                      Por noche
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => handleFieldChange("tipo_precio", "mensual")}
-                    className={`flex-1 py-2.5 rounded-lg items-center ${
-                      form.tipo_precio === "mensual"
-                        ? "bg-[#6B8E23]"
-                        : "bg-transparent"
-                    }`}
-                  >
-                    <Text
-                      className={`font-medium ${
-                        form.tipo_precio === "mensual"
-                          ? "text-white"
-                          : "text-[#5F5F5F]"
-                      }`}
-                    >
-                      Mensual
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {renderError("tipo_precio")}
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1">
-                  {priceLabel}
-                </Text>
-                <TextInput
-                  keyboardType="decimal-pad"
-                  value={form.precio_por_noche}
-                  onChangeText={(val) =>
-                    handleFieldChange("precio_por_noche", val)
-                  }
-                  placeholder="0.00"
-                  placeholderTextColor="#5F5F5F60"
-                  className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                />
-                <Text className="mt-1 text-xs text-[#5F5F5F]/70">
-                  {priceHelpText}
-                </Text>
-                {renderError("precio_por_noche")}
-              </View>
-
-              <View className="flex-row gap-3">
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">
-                    Capacidad
-                  </Text>
-                  <TextInput
-                    keyboardType="number-pad"
-                    value={form.capacidad}
-                    onChangeText={(val) => handleFieldChange("capacidad", val)}
-                    placeholder="Ej. 4"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                  />
-                  {renderError("capacidad")}
-                </View>
-
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">
-                    Habitaciones
-                  </Text>
-                  <TextInput
-                    keyboardType="number-pad"
-                    value={form.numero_habitaciones}
-                    onChangeText={(val) =>
-                      handleFieldChange("numero_habitaciones", val)
-                    }
-                    placeholder="Ej. 2"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                  />
-                  {renderError("numero_habitaciones")}
-                </View>
-
-                <View className="flex-1">
-                  <Text className="text-[#5F5F5F] font-medium mb-1">Baños</Text>
-                  <TextInput
-                    keyboardType="number-pad"
-                    value={form.numero_banos}
-                    onChangeText={(val) =>
-                      handleFieldChange("numero_banos", val)
-                    }
-                    placeholder="Ej. 1"
-                    placeholderTextColor="#5F5F5F60"
-                    className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
-                  />
-                  {renderError("numero_banos")}
-                </View>
-              </View>
-            </View>
-
-            {/* SECCIÓN: Fotografías */}
-            <View className="mb-8">
-              <View className="flex-row justify-between items-center mb-2">
-                <View className="flex-1 mr-2">
-                  <Text className="text-lg font-bold text-[#5F5F5F]">
-                    Fotografías
-                  </Text>
-                  <Text className="text-xs text-[#5F5F5F]/75">
-                    Sube entre 5 y 20 fotos (JPG, PNG o WEBP). Máximo 5 MB.
-                  </Text>
+                  {renderError("descripcion")}
                 </View>
 
                 <TouchableOpacity
-                  onPress={handleSelectImages}
-                  className="flex-row items-center bg-white px-3 py-2.5 rounded-xl border border-[#6B8E23]"
+                  onPress={handleNextStep}
+                  className="min-h-[48px] bg-[#B8860B] rounded-xl flex-row items-center justify-center gap-2"
                 >
-                  <ImagePlus size={16} color="#6B8E23" />
-                  <Text className="ml-1 text-xs font-semibold text-[#6B8E23]">
-                    Seleccionar fotos
+                  <Text className="font-inter-medium text-white text-base">
+                    Continuar a ubicación
                   </Text>
+                  <ArrowRight size={18} color="#FFFFFF" />
                 </TouchableOpacity>
-              </View>
-
-              {renderError("imagenes")}
-
-              {/* Vista previa de imágenes en grid */}
-              {images.length > 0 && (
-                <View className="flex-row flex-wrap gap-2 mt-4">
-                  {images.map((img) => (
-                    <View
-                      key={img.id}
-                      className="relative rounded-xl overflow-hidden bg-white border border-[#6B8E23]/20"
-                      style={{ width: "48%", height: 120 }}
-                    >
-                      <Image
-                        source={{ uri: img.uri }}
-                        className="w-full h-full"
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        onPress={() => removeImage(img.id)}
-                        accessibilityLabel="Quitar imagen"
-                        className="absolute right-2 top-2 h-7 w-7 rounded-lg bg-white/90 items-center justify-center shadow"
-                      >
-                        <Trash2 size={14} color="#A67C52" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* Error global del formulario */}
-            {errors.form && (
-              <View className="mb-4 p-3 bg-red-100 rounded-xl">
-                <Text className="text-xs text-red-800">{errors.form}</Text>
               </View>
             )}
 
-            {/* Botones de Acción Final */}
-            <View className="flex-col gap-3 mt-4">
-              {isSuccess && (
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push("/arrendatario/MisPropiedades" as any)
-                  }
-                  className="h-12 border-2 border-[#6B8E23] rounded-xl items-center justify-center bg-white"
-                >
-                  <Text className="text-[#6B8E23] font-semibold">
-                    Ver mis propiedades
-                  </Text>
-                </TouchableOpacity>
-              )}
+            {/* ETAPA 2: Ubicación */}
+            {step === 1 && (
+              <View className="mb-4">
+                <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] mb-4">
+                  Ubicación
+                </Text>
 
-              <TouchableOpacity
-                onPress={handleSubmit}
-                disabled={isSubmitting}
-                className={`h-12 bg-[#6B8E23] rounded-xl items-center justify-center ${
-                  isSubmitting ? "opacity-60" : ""
-                }`}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text className="text-white font-semibold text-base">
-                    Registrar propiedad
+                <View className="mb-4">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                    Dirección
                   </Text>
+                  <TextInput
+                    value={form.direccion}
+                    onChangeText={(val) => handleFieldChange("direccion", val)}
+                    placeholder="Calle, número exterior/interior"
+                    placeholderTextColor="#7A7A7A"
+                    className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                  />
+                  {renderError("direccion")}
+                </View>
+
+                <View className="flex-row gap-3 mb-4">
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Ciudad
+                    </Text>
+                    <TextInput
+                      value={form.ciudad}
+                      onChangeText={(val) => handleFieldChange("ciudad", val)}
+                      placeholder="Ciudad"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("ciudad")}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      País
+                    </Text>
+                    <TextInput
+                      value={form.pais}
+                      onChangeText={(val) => handleFieldChange("pais", val)}
+                      placeholder="País"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("pais")}
+                  </View>
+                </View>
+
+                {/* Botón Buscar Ubicación */}
+                <TouchableOpacity
+                  onPress={handleSearchLocation}
+                  disabled={geocodeState.isLoading}
+                  className="min-h-[48px] flex-row items-center justify-center bg-[#B8860B] rounded-xl mb-4 px-4"
+                >
+                  {geocodeState.isLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Search size={16} color="#fff" />
+                      <Text className="ml-2 font-inter-medium text-white">
+                        Buscar ubicación
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {geocodeState.message ? (
+                  <View
+                    className={`p-3 rounded-xl mb-4 flex-row items-center border ${
+                      geocodeState.type === "success"
+                        ? "bg-[#F5F2EC] border-[#B8860B]/35"
+                        : "bg-red-50 border-red-200"
+                    }`}
+                  >
+                    {geocodeState.type === "success" ? (
+                      <CheckCircle2 size={16} color="#B8860B" />
+                    ) : (
+                      <AlertCircle size={16} color="#DC2626" />
+                    )}
+                    <Text
+                      className={`ml-2 font-inter text-xs flex-1 ${
+                        geocodeState.type === "success"
+                          ? "text-[#1C1C1C]"
+                          : "text-red-800"
+                      }`}
+                    >
+                      {geocodeState.message}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* Mapa */}
+                <View className="mb-4">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                    Mapa de ubicación
+                  </Text>
+                  <PropertyLocationMap
+                    editable
+                    latitud={form.latitud}
+                    longitud={form.longitud}
+                    direccion={[form.direccion, form.ciudad, form.pais]
+                      .map((value) => value.trim())
+                      .filter(Boolean)
+                      .join(", ")}
+                    onChange={handleLocationChange}
+                  />
+                </View>
+
+                <View className="flex-row gap-3 mb-6">
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Latitud
+                    </Text>
+                    <TextInput
+                      keyboardType="numeric"
+                      value={form.latitud}
+                      onChangeText={(val) => handleFieldChange("latitud", val)}
+                      placeholder="0.000000"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("latitud")}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Longitud
+                    </Text>
+                    <TextInput
+                      keyboardType="numeric"
+                      value={form.longitud}
+                      onChangeText={(val) => handleFieldChange("longitud", val)}
+                      placeholder="0.000000"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("longitud")}
+                  </View>
+                </View>
+
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => setStep(0)}
+                    className="min-h-[48px] px-4 border-[1.5px] border-[#B8860B] rounded-xl flex-row items-center justify-center"
+                  >
+                    <ArrowLeft size={16} color="#B8860B" />
+                    <Text className="ml-1.5 font-inter-medium text-[#B8860B]">
+                      Atrás
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleNextStep}
+                    className="flex-1 min-h-[48px] bg-[#B8860B] rounded-xl flex-row items-center justify-center gap-2"
+                  >
+                    <Text className="font-inter-medium text-white text-base">
+                      Continuar a precio
+                    </Text>
+                    <ArrowRight size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* ETAPA 3: Capacidad y Precio */}
+            {step === 2 && (
+              <View className="mb-4">
+                <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] mb-4">
+                  Capacidad y precio
+                </Text>
+
+                {/* Selector de Tipo de Precio */}
+                <View className="mb-4">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                    Tipo de precio
+                  </Text>
+                  <View className="flex-row bg-[#FAFAFA] p-1 rounded-xl border border-[#DCDCDC]">
+                    <TouchableOpacity
+                      onPress={() => handleFieldChange("tipo_precio", "noche")}
+                      className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                        form.tipo_precio === "noche"
+                          ? "bg-[#B8860B]"
+                          : "bg-transparent"
+                      }`}
+                    >
+                      <Text
+                        className={`font-inter-medium ${
+                          form.tipo_precio === "noche"
+                            ? "text-white"
+                            : "text-[#1C1C1C]"
+                        }`}
+                      >
+                        Por noche
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleFieldChange("tipo_precio", "mensual")
+                      }
+                      className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                        form.tipo_precio === "mensual"
+                          ? "bg-[#B8860B]"
+                          : "bg-transparent"
+                      }`}
+                    >
+                      <Text
+                        className={`font-inter-medium ${
+                          form.tipo_precio === "mensual"
+                            ? "text-white"
+                            : "text-[#1C1C1C]"
+                        }`}
+                      >
+                        Mensual
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {renderError("tipo_precio")}
+                </View>
+
+                <View className="mb-4">
+                  <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                    {priceLabel}
+                  </Text>
+                  <TextInput
+                    keyboardType="decimal-pad"
+                    value={form.precio_por_noche}
+                    onChangeText={(val) =>
+                      handleFieldChange("precio_por_noche", val)
+                    }
+                    placeholder="0.00"
+                    placeholderTextColor="#7A7A7A"
+                    className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                  />
+                  <Text className="mt-1 font-inter text-xs text-[#595959]">
+                    {priceHelpText}
+                  </Text>
+                  {renderError("precio_por_noche")}
+                </View>
+
+                <View className="flex-row gap-3 mb-6">
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Capacidad
+                    </Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={form.capacidad}
+                      onChangeText={(val) =>
+                        handleFieldChange("capacidad", val)
+                      }
+                      placeholder="Ej. 4"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("capacidad")}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Habitaciones
+                    </Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={form.numero_habitaciones}
+                      onChangeText={(val) =>
+                        handleFieldChange("numero_habitaciones", val)
+                      }
+                      placeholder="Ej. 2"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("numero_habitaciones")}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
+                      Baños
+                    </Text>
+                    <TextInput
+                      keyboardType="number-pad"
+                      value={form.numero_banos}
+                      onChangeText={(val) =>
+                        handleFieldChange("numero_banos", val)
+                      }
+                      placeholder="Ej. 1"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
+                    />
+                    {renderError("numero_banos")}
+                  </View>
+                </View>
+
+                <View className="flex-row gap-3">
+                  <TouchableOpacity
+                    onPress={() => setStep(1)}
+                    className="min-h-[48px] px-4 border-[1.5px] border-[#B8860B] rounded-xl flex-row items-center justify-center"
+                  >
+                    <ArrowLeft size={16} color="#B8860B" />
+                    <Text className="ml-1.5 font-inter-medium text-[#B8860B]">
+                      Atrás
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleNextStep}
+                    className="flex-1 min-h-[48px] bg-[#B8860B] rounded-xl flex-row items-center justify-center gap-2"
+                  >
+                    <Text className="font-inter-medium text-white text-base">
+                      Continuar a fotos
+                    </Text>
+                    <ArrowRight size={18} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* ETAPA 4: Fotografías */}
+            {step === 3 && (
+              <View>
+                <View className="flex-row justify-between items-center mb-3">
+                  <View className="flex-1 mr-2">
+                    <Text className="font-poppins text-lg font-semibold text-[#1C1C1C]">
+                      Fotografías
+                    </Text>
+                    <Text className="font-inter text-xs text-[#595959]">
+                      Sube entre 5 y 20 fotos (JPG, PNG o WEBP). Máximo 5 MB.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleSelectImages}
+                    className="min-h-[44px] flex-row items-center bg-[#FAFAFA] px-3.5 py-2.5 rounded-xl border-[1.5px] border-[#B8860B]"
+                  >
+                    <ImagePlus size={16} color="#B8860B" />
+                    <Text className="ml-1.5 font-inter-medium text-xs text-[#B8860B]">
+                      Seleccionar fotos
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View className="rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] px-3.5 py-2.5 mb-3">
+                  <Text className="font-inter text-xs text-[#1C1C1C]">
+                    Seleccionadas:{" "}
+                    <Text className="font-inter-semibold text-[#B8860B]">
+                      {images.length} / 20
+                    </Text>{" "}
+                    (mínimo 5)
+                  </Text>
+                </View>
+
+                {renderError("imagenes")}
+
+                {/* Vista previa de imágenes en grid */}
+                {images.length > 0 && (
+                  <View className="flex-row flex-wrap gap-2 mt-4">
+                    {images.map((img) => (
+                      <View
+                        key={img.id}
+                        className="relative rounded-xl overflow-hidden bg-white border border-[#DCDCDC]"
+                        style={{ width: "48%", height: 120 }}
+                      >
+                        <Image
+                          source={{ uri: img.uri }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                        <TouchableOpacity
+                          onPress={() => removeImage(img.id)}
+                          accessibilityLabel="Quitar imagen"
+                          className="absolute right-2 top-2 h-8 w-8 rounded-lg bg-white/95 border border-[#DCDCDC] items-center justify-center shadow"
+                        >
+                          <Trash2 size={14} color="#B87333" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
                 )}
-              </TouchableOpacity>
-            </View>
+
+                {/* Error global del formulario */}
+                {errors.form && (
+                  <View className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl flex-row items-center gap-2">
+                    <AlertCircle size={16} color="#DC2626" />
+                    <Text className="font-inter text-xs text-red-800 flex-1">
+                      {errors.form}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Botones de Acción Final */}
+                <View className="flex-col gap-3 mt-6">
+                  {isSuccess && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        router.push("/arrendatario/MisPropiedades" as any)
+                      }
+                      className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl items-center justify-center bg-white"
+                    >
+                      <Text className="font-inter-medium text-[#B8860B]">
+                        Ver mis propiedades
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <View className="flex-row gap-3">
+                    <TouchableOpacity
+                      onPress={() => setStep(2)}
+                      disabled={isSubmitting}
+                      className="min-h-[48px] px-4 border-[1.5px] border-[#B8860B] rounded-xl flex-row items-center justify-center"
+                    >
+                      <ArrowLeft size={16} color="#B8860B" />
+                      <Text className="ml-1.5 font-inter-medium text-[#B8860B]">
+                        Atrás
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handleSubmit}
+                      disabled={isSubmitting}
+                      className={`flex-1 min-h-[48px] bg-[#B8860B] rounded-xl items-center justify-center ${
+                        isSubmitting ? "opacity-60" : ""
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text className="font-inter-medium text-white text-base">
+                          Registrar propiedad
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
+
+      <BottomTabBar />
 
       {/* Modal Nativo para Mensajes de Éxito o Error */}
       <Modal
@@ -1028,23 +1206,23 @@ export function CrearPropiedad() {
         }
       >
         <View className="flex-1 justify-center items-center bg-black/50 px-6">
-          <View className="w-full max-w-sm bg-white p-6 rounded-2xl items-center shadow-lg">
+          <View className="w-full max-w-sm bg-white border border-[#DCDCDC] p-6 rounded-2xl items-center shadow-lg">
             <View
               className={`h-12 w-12 rounded-full items-center justify-center mb-4 ${
-                actionMessage.type === "success" ? "bg-green-100" : "bg-red-100"
+                actionMessage.type === "success" ? "bg-[#B8860B]/15" : "bg-red-100"
               }`}
             >
               {actionMessage.type === "success" ? (
-                <CheckCircle2 size={24} color="#15803d" />
+                <CheckCircle2 size={24} color="#B8860B" />
               ) : (
-                <AlertCircle size={24} color="#b91c1c" />
+                <AlertCircle size={24} color="#DC2626" />
               )}
             </View>
 
-            <Text className="text-lg font-bold text-[#5F5F5F] text-center mb-2">
+            <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] text-center mb-2">
               {actionMessage.title}
             </Text>
-            <Text className="text-sm text-[#5F5F5F]/80 text-center mb-6">
+            <Text className="font-inter text-sm text-[#595959] text-center mb-6">
               {actionMessage.description}
             </Text>
 
@@ -1052,9 +1230,9 @@ export function CrearPropiedad() {
               onPress={() =>
                 setActionMessage((curr) => ({ ...curr, open: false }))
               }
-              className="w-full bg-[#6B8E23] h-11 rounded-xl items-center justify-center"
+              className="min-h-[48px] w-full bg-[#B8860B] rounded-xl items-center justify-center"
             >
-              <Text className="text-white font-semibold">Entendido</Text>
+              <Text className="font-inter-medium text-white">Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>

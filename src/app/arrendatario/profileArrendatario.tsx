@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   AlertCircle,
+  ArrowLeftRight,
   BadgeDollarSign,
   Building2,
   Calendar,
@@ -56,6 +57,8 @@ import {
   updateLandlordProfile,
 } from "@/services/landlordProfileService";
 import { getLandlordProperties } from "@/services/propertyService";
+import { BottomTabBar } from "../../components/BottomTabBar";
+import { ConfirmActionModal } from "../../components/ConfirmActionModal";
 import { HeaderArrendatario } from "../../components/headerArrendatario";
 
 export interface LandlordProfileData {
@@ -121,58 +124,7 @@ function resolvePropertyImageUri(rawImage?: string | null): string | null {
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
-interface ConfirmActionModalProps {
-  open: boolean;
-  type: string;
-  title: string;
-  description: string;
-  confirmLabel?: string;
-  onConfirm: () => void;
-}
-
-function ConfirmActionModal({
-  open,
-  type,
-  title,
-  description,
-  confirmLabel = "Entendido",
-  onConfirm,
-}: ConfirmActionModalProps) {
-  const isSuccess = type === "success";
-
-  return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="fade"
-      onRequestClose={onConfirm}
-    >
-      <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl">
-          <View className="flex-row items-center gap-3 mb-3">
-            {isSuccess ? (
-              <CheckCircle2 size={24} color="#6B8E23" />
-            ) : (
-              <AlertCircle size={24} color="#DC2626" />
-            )}
-            <Text className="font-poppins text-lg font-semibold text-[#5F5F5F] flex-1">
-              {title}
-            </Text>
-          </View>
-          <Text className="text-sm text-[#5F5F5F]/80 mb-6 leading-5">
-            {description}
-          </Text>
-          <TouchableOpacity
-            onPress={onConfirm}
-            className="bg-[#6B8E23] rounded-xl py-3 items-center justify-center"
-          >
-            <Text className="text-white font-medium">{confirmLabel}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
+// Modal de confirmación reutilizado desde ../../components/ConfirmActionModal
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -237,13 +189,13 @@ function ChangePasswordModal({
       onRequestClose={handleClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl">
+        <View className="w-full max-w-lg bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-xl">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+            <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">
               Cambiar contraseña
             </Text>
-            <TouchableOpacity onPress={handleClose} className="p-1">
-              <X size={20} color="#5F5F5F" />
+            <TouchableOpacity onPress={handleClose} className="p-1.5">
+              <X size={20} color="#1C1C1C" />
             </TouchableOpacity>
           </View>
 
@@ -251,18 +203,18 @@ function ChangePasswordModal({
             <View
               className={`flex-row items-center p-3 mb-4 rounded-xl border ${
                 success
-                  ? "border-green-200 bg-green-50"
+                  ? "border-[#B8860B]/35 bg-[#F5F2EC]"
                   : "border-red-200 bg-red-50"
               }`}
             >
               {success ? (
-                <CheckCircle2 size={18} color="#16A34A" />
+                <CheckCircle2 size={18} color="#B8860B" />
               ) : (
                 <AlertCircle size={18} color="#DC2626" />
               )}
               <Text
-                className={`ml-2 flex-1 text-sm ${
-                  success ? "text-green-800" : "text-red-800"
+                className={`ml-2 flex-1 font-inter text-sm ${
+                  success ? "text-[#1C1C1C]" : "text-red-800"
                 }`}
               >
                 {success || error}
@@ -272,7 +224,7 @@ function ChangePasswordModal({
 
           <View className="flex-col gap-4">
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
                 Nueva contraseña
               </Text>
               <View className="relative justify-center">
@@ -281,24 +233,24 @@ function ChangePasswordModal({
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Mínimo 6 caracteres"
-                  placeholderTextColor="#9ca3af"
-                  className="h-12 pl-4 pr-12 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
+                  placeholderTextColor="#7A7A7A"
+                  className="h-12 pl-4 pr-12 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword((prev) => !prev)}
                   className="absolute right-4 p-1"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
 
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
                 Confirmar nueva contraseña
               </Text>
               <View className="relative justify-center">
@@ -307,17 +259,17 @@ function ChangePasswordModal({
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Repite tu nueva contraseña"
-                  placeholderTextColor="#9ca3af"
-                  className="h-12 pl-4 pr-12 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
+                  placeholderTextColor="#7A7A7A"
+                  className="h-12 pl-4 pr-12 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute right-4 p-1"
                 >
                   {showConfirmPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -330,7 +282,7 @@ function ChangePasswordModal({
                   void handleSubmit();
                 }}
                 disabled={isSubmitting}
-                className={`bg-[#6B8E23] rounded-xl py-3 items-center justify-center flex-row ${
+                className={`min-h-[48px] bg-[#B8860B] rounded-xl py-3 items-center justify-center flex-row ${
                   isSubmitting ? "opacity-60" : ""
                 }`}
               >
@@ -341,7 +293,7 @@ function ChangePasswordModal({
                     className="mr-2"
                   />
                 )}
-                <Text className="text-white font-medium">
+                <Text className="font-inter-medium text-white">
                   {isSubmitting ? "Actualizando..." : "Guardar contraseña"}
                 </Text>
               </TouchableOpacity>
@@ -349,9 +301,9 @@ function ChangePasswordModal({
               <TouchableOpacity
                 onPress={handleClose}
                 disabled={isSubmitting}
-                className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center justify-center"
               >
-                <Text className="text-[#6B8E23] font-medium">Cerrar</Text>
+                <Text className="font-inter-medium text-[#B8860B]">Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -410,6 +362,7 @@ export function PerfilArrendatario({
     "properties" | "activity" | "settings"
   >("properties");
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [confirmSwitchGuestOpen, setConfirmSwitchGuestOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     nombre: effectiveUserData?.nombre || "",
@@ -874,15 +827,15 @@ export function PerfilArrendatario({
   };
 
   const getStatusBgColor = (estado?: string) => {
-    if (estado === "activa") return "bg-[#6B8E23]";
+    if (estado === "activa") return "bg-[#B8860B]";
     if (estado === "suspendida") return "bg-amber-100";
-    return "bg-[#A67C52]/20";
+    return "bg-[#DCDCDC]";
   };
 
   const getStatusTextColor = (estado?: string) => {
     if (estado === "activa") return "text-white";
     if (estado === "suspendida") return "text-amber-800";
-    return "text-[#5F5F5F]";
+    return "text-[#1C1C1C]";
   };
 
   const formatCurrency = (value?: number | string) => {
@@ -906,16 +859,16 @@ export function PerfilArrendatario({
 
   if (!isAuthorizedLandlord) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+      <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
         <StatusBar style="dark" />
         <HeaderArrendatario />
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center px-6">
-          <View className="w-full max-w-md bg-white border border-[#6B8E23]/15 rounded-2xl p-6 shadow-sm items-center">
+          <View className="w-full max-w-md bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-sm items-center">
             <AlertCircle size={36} color="#DC2626" />
-            <Text className="mt-3 font-poppins font-semibold text-xl text-[#5F5F5F] text-center">
+            <Text className="mt-3 font-poppins font-semibold text-xl text-[#1C1C1C] text-center">
               No se pudo validar tu perfil de anfitrión
             </Text>
-            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+            <Text className="mt-2 font-inter text-sm text-[#595959] text-center leading-5">
               Tu sesión de arrendatario no incluye un identificador completo.
               Vuelve a iniciar sesión para cargar tu perfil y tus propiedades.
             </Text>
@@ -924,20 +877,21 @@ export function PerfilArrendatario({
                 authService.logout();
                 router.replace("/loginPage" as any);
               }}
-              className="mt-5 w-full bg-[#6B8E23] rounded-xl py-3 items-center"
+              className="mt-5 min-h-[48px] justify-center w-full bg-[#B8860B] rounded-xl py-3 items-center"
             >
-              <Text className="text-white font-medium">
+              <Text className="font-inter-medium text-white">
                 Volver a iniciar sesión
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <HeaderArrendatario />
 
@@ -946,22 +900,22 @@ export function PerfilArrendatario({
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header */}
-        <View className="p-6 mb-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+        <View className="p-6 mb-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
           <View className="flex-col items-center">
-            <View className="h-24 w-24 bg-[#6B8E23] rounded-full border-4 border-[#F2E8CF] items-center justify-center mb-4">
-              <Text className="text-white text-2xl font-poppins font-bold">
+            <View className="h-24 w-24 bg-[#B8860B] rounded-full border-4 border-[#F5F2EC] items-center justify-center mb-4">
+              <Text className="text-white text-2xl font-poppins font-semibold">
                 {getInitials(profile?.nombre)}
               </Text>
             </View>
 
             <View className="w-full items-center mb-5">
               <View className="flex-col items-center mb-4">
-                <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F] capitalize text-center mb-1.5">
+                <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C] capitalize text-center mb-1.5">
                   {profile?.nombre || "Usuario"}
                 </Text>
-                <View className="flex-row items-center gap-1.5">
-                  <Star size={16} color="#6B8E23" fill="#6B8E23" />
-                  <Text className="text-[#5F5F5F] font-medium text-sm">
+                <View className="flex-row items-center gap-1.5 bg-[#F5F2EC] border border-[#DCDCDC] px-3 py-1 rounded-full">
+                  <Star size={16} color="#B8860B" fill="#B8860B" />
+                  <Text className="font-inter-medium text-[#1C1C1C] text-sm">
                     Arrendatario en NoWayHome
                   </Text>
                 </View>
@@ -969,28 +923,28 @@ export function PerfilArrendatario({
 
               <View className="flex-col gap-2.5 w-full items-center">
                 <View className="flex-row items-center justify-center gap-2">
-                  <Mail size={16} color="#A67C52" />
-                  <Text className="text-[#5F5F5F] text-sm">
+                  <Mail size={16} color="#B87333" />
+                  <Text className="font-inter text-[#1C1C1C] text-sm">
                     {profile?.correo || profile?.email || "Sin correo"}
                   </Text>
                 </View>
                 {profile?.telefono ? (
                   <View className="flex-row items-center justify-center gap-2">
-                    <Phone size={16} color="#A67C52" />
-                    <Text className="text-[#5F5F5F] text-sm">
+                    <Phone size={16} color="#B87333" />
+                    <Text className="font-inter text-[#1C1C1C] text-sm">
                       {profile.telefono}
                     </Text>
                   </View>
                 ) : null}
                 <View className="flex-row items-center justify-center gap-2">
-                  <MapPin size={16} color="#A67C52" />
-                  <Text className="text-[#5F5F5F] text-sm">
+                  <MapPin size={16} color="#B87333" />
+                  <Text className="font-inter text-[#595959] text-sm">
                     Ubicación no definida
                   </Text>
                 </View>
                 <View className="flex-row items-center justify-center gap-2">
-                  <Calendar size={16} color="#A67C52" />
-                  <Text className="text-[#5F5F5F] text-sm">
+                  <Calendar size={16} color="#B87333" />
+                  <Text className="font-inter text-[#595959] text-sm">
                     Miembro verificado
                   </Text>
                 </View>
@@ -999,25 +953,25 @@ export function PerfilArrendatario({
 
             <TouchableOpacity
               onPress={openEditProfile}
-              className="w-full border-2 border-[#6B8E23] rounded-xl flex-row items-center justify-center py-3 px-6 gap-2"
+              className="min-h-[48px] w-full border-[1.5px] border-[#B8860B] rounded-xl flex-row items-center justify-center py-3 px-6 gap-2"
             >
-              <Edit size={16} color="#6B8E23" />
-              <Text className="text-[#6B8E23] font-medium">Editar</Text>
+              <Edit size={16} color="#B8860B" />
+              <Text className="font-inter-medium text-[#B8860B]">Editar</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Custom Tabs */}
-        <View className="flex-row bg-white border border-[#6B8E23]/10 p-1 rounded-xl mb-6">
+        <View className="flex-row bg-white border border-[#DCDCDC] p-1 rounded-xl mb-6">
           <TouchableOpacity
             onPress={() => setActiveTab("properties")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "properties" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "properties" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "properties" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "properties" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Mis propiedades
@@ -1025,13 +979,13 @@ export function PerfilArrendatario({
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setActiveTab("activity")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "activity" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "activity" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "activity" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "activity" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Actividad
@@ -1039,13 +993,13 @@ export function PerfilArrendatario({
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setActiveTab("settings")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "settings" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "settings" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "settings" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "settings" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Ajustes
@@ -1055,17 +1009,17 @@ export function PerfilArrendatario({
 
         {/* Tab: Mis Propiedades */}
         {activeTab === "properties" && (
-          <View className="p-6 bg-[#F2E8CF] rounded-2xl mb-10">
+          <View className="p-6 bg-[#F5F2EC] border border-[#DCDCDC] rounded-2xl mb-10">
             <View className="flex-col gap-6">
               <View className="flex-col gap-4">
                 <View>
                   <View className="flex-row items-center gap-2 mb-2">
-                    <Building2 size={24} color="#6B8E23" />
-                    <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+                    <Building2 size={24} color="#B8860B" />
+                    <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                       Mis propiedades
                     </Text>
                   </View>
-                  <Text className="text-[#5F5F5F]">
+                  <Text className="font-inter text-[#595959]">
                     Administra los alojamientos que tienes publicados en
                     NoWayHome.
                   </Text>
@@ -1076,9 +1030,9 @@ export function PerfilArrendatario({
                     onPress={() =>
                       router.push("/arrendatario/MisPropiedades" as any)
                     }
-                    className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                    className="min-h-[48px] justify-center border-[1.5px] border-[#B8860B] bg-white rounded-xl py-3 items-center"
                   >
-                    <Text className="text-[#6B8E23] font-medium">
+                    <Text className="font-inter-medium text-[#B8860B]">
                       Ver todas mis propiedades
                     </Text>
                   </TouchableOpacity>
@@ -1086,10 +1040,10 @@ export function PerfilArrendatario({
                     onPress={() =>
                       router.push("/arrendatario/crearPropiedad" as any)
                     }
-                    className="bg-[#6B8E23] rounded-xl py-3 flex-row items-center justify-center gap-2"
+                    className="min-h-[48px] bg-[#B8860B] rounded-xl py-3 flex-row items-center justify-center gap-2"
                   >
                     <Plus size={16} color="white" />
-                    <Text className="text-white font-medium">
+                    <Text className="font-inter-medium text-white">
                       Agregar propiedad
                     </Text>
                   </TouchableOpacity>
@@ -1097,30 +1051,32 @@ export function PerfilArrendatario({
               </View>
 
               {isLoadingProperties && (
-                <Text className="text-sm text-[#5F5F5F]">
+                <Text className="font-inter text-sm text-[#595959]">
                   Cargando propiedades...
                 </Text>
               )}
 
               {!isLoadingProperties && propertiesError ? (
-                <Text className="text-sm text-red-800">{propertiesError}</Text>
+                <Text className="font-inter text-sm text-red-800">
+                  {propertiesError}
+                </Text>
               ) : null}
 
               {!isLoadingProperties &&
                 !propertiesError &&
                 recentProperties.length === 0 && (
-                  <View className="rounded-2xl bg-white p-5 border border-[#6B8E23]/10 items-center">
-                    <Text className="mb-4 text-[#5F5F5F] text-center">
+                  <View className="rounded-2xl bg-white p-5 border border-[#DCDCDC] items-center">
+                    <Text className="mb-4 font-inter text-[#595959] text-center">
                       Aún no tienes propiedades registradas.
                     </Text>
                     <TouchableOpacity
                       onPress={() =>
                         router.push("/arrendatario/crearPropiedad" as any)
                       }
-                      className="bg-[#6B8E23] rounded-xl py-3 px-6 flex-row items-center gap-2"
+                      className="min-h-[48px] bg-[#B8860B] rounded-xl py-3 px-6 flex-row items-center gap-2"
                     >
                       <Plus size={16} color="white" />
-                      <Text className="text-white font-medium">
+                      <Text className="font-inter-medium text-white">
                         Agregar propiedad
                       </Text>
                     </TouchableOpacity>
@@ -1154,17 +1110,17 @@ export function PerfilArrendatario({
                               );
                             }
                           }}
-                          className="overflow-hidden bg-white border border-[#6B8E23]/10 rounded-2xl"
+                          className="overflow-hidden bg-white border border-[#DCDCDC] rounded-2xl"
                         >
                           {imageUri ? (
                             <Image
                               source={{ uri: imageUri }}
-                              className="h-32 w-full bg-gray-200"
+                              className="h-32 w-full bg-[#DCDCDC]"
                               resizeMode="cover"
                             />
                           ) : (
                             <View className="h-32 w-full items-center justify-center bg-[#FAFAFA]">
-                              <Building2 size={32} color="#6B8E23" />
+                              <Building2 size={32} color="#B87333" />
                             </View>
                           )}
 
@@ -1172,24 +1128,24 @@ export function PerfilArrendatario({
                             <View className="mb-3 flex-row items-start justify-between">
                               <View className="flex-1 pr-2">
                                 <Text
-                                  className="font-poppins font-semibold text-[#5F5F5F]"
+                                  className="font-poppins font-semibold text-[#1C1C1C]"
                                   numberOfLines={1}
                                 >
                                   {property.titulo}
                                 </Text>
-                                <Text className="mt-1 text-xs text-[#5F5F5F]/75">
+                                <Text className="mt-1 font-inter text-xs text-[#595959]">
                                   {[property.ciudad, property.pais]
                                     .filter(Boolean)
                                     .join(", ")}
                                 </Text>
                               </View>
                               <View
-                                className={`rounded-lg px-2 py-1 ${getStatusBgColor(
+                                className={`rounded-lg px-2.5 py-1 ${getStatusBgColor(
                                   property.estado,
                                 )}`}
                               >
                                 <Text
-                                  className={`text-[11px] font-medium capitalize ${getStatusTextColor(
+                                  className={`font-inter-medium text-[11px] capitalize ${getStatusTextColor(
                                     property.estado,
                                   )}`}
                                 >
@@ -1198,12 +1154,12 @@ export function PerfilArrendatario({
                               </View>
                             </View>
                             <View className="flex-row items-center justify-between">
-                              <Text className="font-poppins text-sm font-semibold text-[#6B8E23]">
+                              <Text className="font-poppins text-sm font-semibold text-[#B8860B]">
                                 {formatPrice(property)}
                               </Text>
                               <View className="flex-row items-center gap-1">
-                                <Edit size={13} color="#6B8E23" />
-                                <Text className="text-xs font-medium text-[#6B8E23]">
+                                <Edit size={14} color="#B8860B" />
+                                <Text className="font-inter-medium text-xs text-[#B8860B]">
                                   Editar
                                 </Text>
                               </View>
@@ -1222,20 +1178,20 @@ export function PerfilArrendatario({
         {activeTab === "activity" && (
           <View className="mb-10 flex-col gap-6">
             <View className="flex-row items-center gap-2 mb-2">
-              <CalendarCheck size={24} color="#6B8E23" />
-              <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+              <CalendarCheck size={24} color="#B87333" />
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                 Actividad de arrendatario
               </Text>
             </View>
 
-            <View className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+            <View className="p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
               <View className="flex-row justify-between items-start mb-4">
-                <Text className="font-poppins font-semibold text-[#5F5F5F]">
+                <Text className="font-poppins font-semibold text-[#1C1C1C]">
                   Reservas recibidas
                 </Text>
-                <CalendarCheck size={20} color="#6B8E23" />
+                <CalendarCheck size={20} color="#B87333" />
               </View>
-              <Text className="text-sm text-[#5F5F5F] mb-5">
+              <Text className="font-inter text-sm text-[#595959] mb-5">
                 Aquí podrás revisar solicitudes y reservas asociadas a tus
                 alojamientos.
               </Text>
@@ -1243,78 +1199,82 @@ export function PerfilArrendatario({
                 onPress={() =>
                   router.push("/arrendatario/ReservasArrendatario" as any)
                 }
-                className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                className="min-h-[48px] justify-center border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center"
               >
-                <Text className="text-[#6B8E23] font-medium">Ver reservas</Text>
+                <Text className="font-inter-medium text-[#B8860B]">
+                  Ver reservas
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <View className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+            <View className="p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
               <View className="flex-row justify-between items-start mb-4">
-                <Text className="font-poppins font-semibold text-[#5F5F5F]">
+                <Text className="font-poppins font-semibold text-[#1C1C1C]">
                   Ingresos / transacciones
                 </Text>
-                <BadgeDollarSign size={20} color="#6B8E23" />
+                <BadgeDollarSign size={20} color="#B8860B" />
               </View>
 
               {isLoadingStats && (
-                <Text className="text-sm text-[#5F5F5F] mb-5">
+                <Text className="font-inter text-sm text-[#595959] mb-5">
                   Calculando ingresos estimados...
                 </Text>
               )}
 
               {!isLoadingStats && statsError ? (
-                <Text className="text-sm text-red-800 mb-5">{statsError}</Text>
+                <Text className="font-inter text-sm text-red-800 mb-5">
+                  {statsError}
+                </Text>
               ) : null}
 
               {!isLoadingStats && !statsError && (
                 <View className="flex-col gap-3">
-                  <View className="flex-row items-center justify-between rounded-xl bg-green-50 px-3 py-3">
-                    <Text className="text-[#5F5F5F] text-sm">
+                  <View className="flex-row items-center justify-between rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] px-3 py-3">
+                    <Text className="font-inter text-[#1C1C1C] text-sm">
                       Total estimado confirmado
                     </Text>
-                    <Text className="font-semibold text-green-700 text-sm">
+                    <Text className="font-inter-semibold text-[#B8860B] text-sm">
                       {formatCurrency(reservationStats.totalConfirmado)}
                     </Text>
                   </View>
 
-                  <View className="flex-row items-center justify-between rounded-xl bg-amber-50 px-3 py-3">
-                    <Text className="text-[#5F5F5F] text-sm">
+                  <View className="flex-row items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-3">
+                    <Text className="font-inter text-[#1C1C1C] text-sm">
                       Total pendiente
                     </Text>
-                    <Text className="font-semibold text-amber-700 text-sm">
+                    <Text className="font-inter-semibold text-[#B87333] text-sm">
                       {formatCurrency(reservationStats.totalPendiente)}
                     </Text>
                   </View>
 
-                  <View className="flex-row items-center justify-between rounded-xl bg-[#FAFAFA] px-3 py-3 border border-gray-100">
-                    <Text className="text-[#5F5F5F] text-sm">
+                  <View className="flex-row items-center justify-between rounded-xl bg-[#FAFAFA] px-3 py-3 border border-[#DCDCDC]">
+                    <Text className="font-inter text-[#595959] text-sm">
                       Total cancelado/rechazado
                     </Text>
-                    <Text className="font-semibold text-[#5F5F5F] text-sm">
+                    <Text className="font-inter-semibold text-[#1C1C1C] text-sm">
                       {formatCurrency(reservationStats.totalNoActivo)}
                     </Text>
                   </View>
 
                   <View className="flex-row gap-2 mt-2">
-                    <View className="flex-1 rounded-lg bg-[#F2E8CF] px-2 py-3 items-center">
-                      <Text className="text-center text-[#5F5F5F] text-xs">
+                    <View className="flex-1 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] px-2 py-3 items-center">
+                      <Text className="font-inter-medium text-center text-[#1C1C1C] text-xs">
                         {reservationStats.countConfirmada} confirmadas
                       </Text>
                     </View>
-                    <View className="flex-1 rounded-lg bg-[#F2E8CF] px-2 py-3 items-center">
-                      <Text className="text-center text-[#5F5F5F] text-xs">
+                    <View className="flex-1 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] px-2 py-3 items-center">
+                      <Text className="font-inter-medium text-center text-[#1C1C1C] text-xs">
                         {reservationStats.countPendiente} pendientes
                       </Text>
                     </View>
-                    <View className="flex-1 rounded-lg bg-[#F2E8CF] px-2 py-3 items-center">
-                      <Text className="text-center text-[#5F5F5F] text-xs">
+                    <View className="flex-1 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] px-2 py-3 items-center">
+                      <Text className="font-inter-medium text-center text-[#1C1C1C] text-xs">
                         {reservationStats.countNoActiva} cancel
                       </Text>
                     </View>
                   </View>
 
-                  <Text className="pt-2 text-xs text-[#5F5F5F]/75">
+                  <Text className="pt-2 font-inter text-xs text-[#595959]">
                     Estos montos se calculan con base en las reservas
                     registradas y los pagos procesados a través de PayPal.
                   </Text>
@@ -1328,38 +1288,50 @@ export function PerfilArrendatario({
         {activeTab === "settings" && (
           <View className="mb-10 flex-col gap-6">
             <View className="flex-row items-center gap-2 mb-2">
-              <Settings size={24} color="#6B8E23" />
-              <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+              <Settings size={24} color="#B87333" />
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                 Configuración de Cuenta
               </Text>
             </View>
 
-            <View className="p-6 bg-[#F2E8CF] rounded-2xl flex-col gap-4">
+            <View className="p-6 bg-[#F5F2EC] border border-[#DCDCDC] rounded-2xl flex-col gap-4">
               <View>
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-2">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-2">
                   Rol actual
                 </Text>
                 <View className="flex-row items-center gap-2">
-                  <View className="px-3 py-1 rounded-lg bg-white">
-                    <Text className="text-[#6B8E23] font-medium text-sm">
+                  <View className="px-3 py-1 rounded-lg bg-white border border-[#DCDCDC]">
+                    <Text className="font-inter-semibold text-[#B8860B] text-sm">
                       Arrendatario
                     </Text>
                   </View>
-                  <Text className="text-sm text-[#5F5F5F]/70 flex-shrink">
+                  <Text className="font-inter text-sm text-[#595959] flex-shrink">
                     Publicar y gestionar alojamientos
                   </Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                onPress={() => setConfirmSwitchGuestOpen(true)}
+                className="min-h-[48px] flex-row justify-center bg-[#B8860B] rounded-xl py-3 px-4 w-full items-center gap-2"
+              >
+                <ArrowLeftRight size={17} color="#FFFFFF" />
+                <Text className="font-inter-medium text-white">
+                  Cambiar a Huésped
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View className="p-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl flex-col gap-8">
+            <View className="p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl flex-col gap-8">
               <View>
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-5">
                   Preferencias de Notificaciones
                 </Text>
                 <View className="flex-col gap-4">
-                  <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
-                    <Text className="text-[#5F5F5F]">Ofertas especiales</Text>
+                  <View className="flex-row items-center justify-between py-2 border-b border-[#DCDCDC]">
+                    <Text className="font-inter text-[#1C1C1C]">
+                      Ofertas especiales
+                    </Text>
                     <Switch
                       value={notifPreferences.ofertas}
                       onValueChange={(val) =>
@@ -1368,12 +1340,12 @@ export function PerfilArrendatario({
                           ofertas: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
-                  <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
-                    <Text className="text-[#5F5F5F]">
+                  <View className="flex-row items-center justify-between py-2 border-b border-[#DCDCDC]">
+                    <Text className="font-inter text-[#1C1C1C]">
                       Recordatorios de reserva
                     </Text>
                     <Switch
@@ -1384,12 +1356,12 @@ export function PerfilArrendatario({
                           recordatorios: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
                   <View className="flex-row items-center justify-between py-2">
-                    <Text className="text-[#5F5F5F]">Newsletter</Text>
+                    <Text className="font-inter text-[#1C1C1C]">Newsletter</Text>
                     <Switch
                       value={notifPreferences.newsletter}
                       onValueChange={(val) =>
@@ -1398,23 +1370,23 @@ export function PerfilArrendatario({
                           newsletter: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
                 </View>
               </View>
 
-              <View className="pt-6 border-t border-[#6B8E23]/10">
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+              <View className="pt-6 border-t border-[#DCDCDC]">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-5">
                   Seguridad
                 </Text>
                 <TouchableOpacity
                   onPress={() => setIsChangePasswordOpen(true)}
-                  className="border-2 border-[#6B8E23]/20 rounded-xl py-3 px-4 flex-row items-center gap-3"
+                  className="min-h-[48px] border-[1.5px] border-[#DCDCDC] bg-[#FAFAFA] rounded-xl py-3 px-4 flex-row items-center gap-3"
                 >
-                  <Lock size={16} color="#5F5F5F" />
-                  <Text className="text-[#5F5F5F] font-medium">
+                  <Lock size={16} color="#B87333" />
+                  <Text className="font-inter-medium text-[#1C1C1C]">
                     Cambiar contraseña
                   </Text>
                 </TouchableOpacity>
@@ -1424,6 +1396,8 @@ export function PerfilArrendatario({
         )}
       </ScrollView>
 
+      <BottomTabBar />
+
       {/* Modal para Editar Perfil */}
       <Modal
         visible={isEditOpen}
@@ -1432,30 +1406,32 @@ export function PerfilArrendatario({
         onRequestClose={closeEditProfile}
       >
         <View className="flex-1 justify-center items-center bg-black/50 px-4">
-          <View className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl">
+          <View className="w-full max-w-lg bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-xl">
             <View className="mb-5">
-              <Text className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+              <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">
                 Editar información personal
               </Text>
-              <Text className="mt-2 text-sm text-[#5F5F5F]/75">
+              <Text className="mt-2 font-inter text-sm text-[#595959]">
                 Actualiza los datos visibles en tu perfil de arrendatario.
               </Text>
             </View>
 
             <View className="flex-col gap-4">
               <View>
-                <Text className="text-[#5F5F5F] font-medium mb-2">Nombre</Text>
+                <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                  Nombre
+                </Text>
                 <TextInput
                   value={editForm.nombre}
                   onChangeText={(text) => handleEditFieldChange("nombre", text)}
-                  className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
-                  placeholderTextColor="#9ca3af"
+                  className="h-12 px-4 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
+                  placeholderTextColor="#7A7A7A"
                 />
                 {renderEditError("nombre")}
               </View>
 
               <View>
-                <Text className="text-[#5F5F5F] font-medium mb-2">
+                <Text className="font-inter-medium text-[#1C1C1C] mb-2">
                   Teléfono
                 </Text>
                 <TextInput
@@ -1464,20 +1440,22 @@ export function PerfilArrendatario({
                     handleEditFieldChange("telefono", text)
                   }
                   keyboardType="phone-pad"
-                  className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
-                  placeholderTextColor="#9ca3af"
+                  className="h-12 px-4 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
+                  placeholderTextColor="#7A7A7A"
                 />
                 {renderEditError("telefono")}
               </View>
 
               <View>
-                <Text className="text-[#5F5F5F] font-medium mb-2">Correo</Text>
+                <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                  Correo
+                </Text>
                 <TextInput
                   value={profile?.correo || profile?.email || ""}
                   editable={false}
-                  className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 bg-[#FAFAFA] text-[#5F5F5F] opacity-80"
+                  className="h-12 px-4 rounded-xl border border-[#DCDCDC] bg-[#DCDCDC]/35 font-inter-medium text-[#1C1C1C] opacity-75"
                 />
-                <Text className="mt-2 text-xs text-[#5F5F5F]/70">
+                <Text className="mt-2 font-inter text-xs text-[#595959]">
                   El correo se usa para iniciar sesión y no puede modificarse
                   desde esta sección.
                 </Text>
@@ -1487,7 +1465,7 @@ export function PerfilArrendatario({
                 <TouchableOpacity
                   onPress={handleSaveProfile}
                   disabled={isSavingProfile}
-                  className={`bg-[#6B8E23] rounded-xl py-3 items-center justify-center flex-row ${
+                  className={`min-h-[48px] bg-[#B8860B] rounded-xl py-3 items-center justify-center flex-row ${
                     isSavingProfile ? "opacity-60" : ""
                   }`}
                 >
@@ -1498,16 +1476,18 @@ export function PerfilArrendatario({
                       className="mr-2"
                     />
                   )}
-                  <Text className="text-white font-medium">
+                  <Text className="font-inter-medium text-white">
                     {isSavingProfile ? "Guardando..." : "Guardar cambios"}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={closeEditProfile}
                   disabled={isSavingProfile}
-                  className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                  className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center justify-center"
                 >
-                  <Text className="text-[#6B8E23] font-medium">Cancelar</Text>
+                  <Text className="font-inter-medium text-[#B8860B]">
+                    Cancelar
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1535,6 +1515,24 @@ export function PerfilArrendatario({
             description: "",
           })
         }
+      />
+
+      <ConfirmActionModal
+        open={confirmSwitchGuestOpen}
+        type="confirm"
+        title="Cambiar a Huésped"
+        description="¿Deseas cambiar tu vista activa al modo Huésped para explorar alojamientos y revisar tus reservas?"
+        cancelLabel="Cancelar"
+        confirmLabel="Sí, cambiar"
+        confirmVariant="adminPrimary"
+        onCancel={() => setConfirmSwitchGuestOpen(false)}
+        onConfirm={() => {
+          setConfirmSwitchGuestOpen(false);
+          const res = authService.switchRole("inquilino");
+          if (res?.success) {
+            router.replace("/inquilino/ExplorarPage" as any);
+          }
+        }}
       />
     </SafeAreaView>
   );

@@ -14,7 +14,7 @@ export interface CardTextProps extends TextProps {
 export function Card({ className = "", children, ...props }: CardProps) {
   return (
     <View
-      className={`bg-white flex-col gap-4 rounded-2xl border border-[#6B8E23]/15 shadow-sm ${className}`}
+      className={`bg-white flex-col gap-4 rounded-2xl border border-[#DCDCDC] shadow-sm ${className}`}
       {...props}
     >
       {children}
@@ -37,7 +37,7 @@ export function CardTitle({
 }: CardTextProps) {
   return (
     <Text
-      className={`font-poppins text-lg font-semibold text-[#5F5F5F] ${className}`}
+      className={`font-poppins text-lg font-semibold text-[#1C1C1C] ${className}`}
       {...props}
     >
       {children}
@@ -51,7 +51,7 @@ export function CardDescription({
   ...props
 }: CardTextProps) {
   return (
-    <Text className={`text-sm text-[#5F5F5F]/75 ${className}`} {...props}>
+    <Text className={`font-inter text-sm text-[#595959] ${className}`} {...props}>
       {children}
     </Text>
   );

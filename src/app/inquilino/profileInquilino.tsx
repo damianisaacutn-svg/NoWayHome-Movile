@@ -1,7 +1,8 @@
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   AlertCircle,
+  ArrowLeftRight,
   Calendar,
   CheckCircle2,
   Edit,
@@ -54,6 +55,9 @@ import {
   pickValidId,
   resolveUserRole,
 } from "@/utils/sessionRole";
+import { BottomTabBar } from "../../components/BottomTabBar";
+import { CancelBookingModal } from "../../components/CancelBookingModal";
+import { ConfirmActionModal } from "../../components/ConfirmActionModal";
 import { HeaderInquilino } from "../../components/headerInquilino";
 
 export interface TenantProfileData {
@@ -185,12 +189,12 @@ function EditInquilinoModal({
       onRequestClose={handleClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl">
+        <View className="w-full max-w-lg bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-xl">
           <View className="mb-5">
-            <Text className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+            <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">
               Editar información personal
             </Text>
-            <Text className="mt-2 text-sm text-[#5F5F5F]/75">
+            <Text className="mt-2 font-inter text-sm text-[#595959]">
               Actualiza los datos visibles en tu perfil de huésped.
             </Text>
           </View>
@@ -198,7 +202,7 @@ function EditInquilinoModal({
           {serverError ? (
             <View className="flex-row items-center p-3 mb-4 rounded-xl border border-red-200 bg-red-50">
               <AlertCircle size={18} color="#DC2626" />
-              <Text className="ml-2 flex-1 text-sm text-red-800">
+              <Text className="ml-2 flex-1 font-inter text-sm text-red-800">
                 {serverError}
               </Text>
             </View>
@@ -206,25 +210,32 @@ function EditInquilinoModal({
 
           <View className="flex-col gap-4">
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">Nombre</Text>
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                Nombre
+              </Text>
               <TextInput
                 value={nombre}
                 onChangeText={(text) => {
                   setNombre(text);
                   setErrors((prev) => ({ ...prev, nombre: undefined }));
                 }}
-                className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
-                placeholderTextColor="#9ca3af"
+                className="h-12 px-4 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
+                placeholderTextColor="#7A7A7A"
               />
               {errors.nombre ? (
-                <Text className="mt-1 text-sm text-red-700">
-                  {errors.nombre}
-                </Text>
+                <View className="mt-1.5 flex-row items-center gap-1.5">
+                  <AlertCircle size={14} color="#DC2626" />
+                  <Text className="font-inter text-xs text-red-700">
+                    {errors.nombre}
+                  </Text>
+                </View>
               ) : null}
             </View>
 
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">Teléfono</Text>
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                Teléfono
+              </Text>
               <TextInput
                 value={telefono}
                 onChangeText={(text) => {
@@ -232,24 +243,29 @@ function EditInquilinoModal({
                   setErrors((prev) => ({ ...prev, telefono: undefined }));
                 }}
                 keyboardType="phone-pad"
-                className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
-                placeholderTextColor="#9ca3af"
+                className="h-12 px-4 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
+                placeholderTextColor="#7A7A7A"
               />
               {errors.telefono ? (
-                <Text className="mt-1 text-sm text-red-700">
-                  {errors.telefono}
-                </Text>
+                <View className="mt-1.5 flex-row items-center gap-1.5">
+                  <AlertCircle size={14} color="#DC2626" />
+                  <Text className="font-inter text-xs text-red-700">
+                    {errors.telefono}
+                  </Text>
+                </View>
               ) : null}
             </View>
 
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">Correo</Text>
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
+                Correo
+              </Text>
               <TextInput
                 value={userData?.correo || userData?.email || ""}
                 editable={false}
-                className="h-12 px-4 rounded-xl border border-[#6B8E23]/20 bg-[#FAFAFA] text-[#5F5F5F] opacity-80"
+                className="h-12 px-4 rounded-xl border border-[#DCDCDC] bg-[#DCDCDC]/35 font-inter-medium text-[#1C1C1C] opacity-75"
               />
-              <Text className="mt-2 text-xs text-[#5F5F5F]/70">
+              <Text className="mt-2 font-inter text-xs text-[#595959]">
                 El correo se usa para iniciar sesión y no puede modificarse
                 desde esta sección.
               </Text>
@@ -259,7 +275,7 @@ function EditInquilinoModal({
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={isSaving}
-                className={`bg-[#6B8E23] rounded-xl py-3 items-center justify-center flex-row ${
+                className={`min-h-[48px] bg-[#B8860B] rounded-xl py-3 items-center justify-center flex-row ${
                   isSaving ? "opacity-60" : ""
                 }`}
               >
@@ -270,16 +286,18 @@ function EditInquilinoModal({
                     className="mr-2"
                   />
                 )}
-                <Text className="text-white font-medium">
+                <Text className="font-inter-medium text-white">
                   {isSaving ? "Guardando..." : "Guardar cambios"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleClose}
                 disabled={isSaving}
-                className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center justify-center"
               >
-                <Text className="text-[#6B8E23] font-medium">Cancelar</Text>
+                <Text className="font-inter-medium text-[#B8860B]">
+                  Cancelar
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -348,13 +366,13 @@ function ChangePasswordModal({
       onRequestClose={handleClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-lg bg-white rounded-2xl p-6 shadow-xl">
+        <View className="w-full max-w-lg bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-xl">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="font-poppins text-xl font-semibold text-[#5F5F5F]">
+            <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">
               Cambiar contraseña
             </Text>
-            <TouchableOpacity onPress={handleClose} className="p-1">
-              <X size={20} color="#5F5F5F" />
+            <TouchableOpacity onPress={handleClose} className="p-1.5">
+              <X size={20} color="#1C1C1C" />
             </TouchableOpacity>
           </View>
 
@@ -362,18 +380,18 @@ function ChangePasswordModal({
             <View
               className={`flex-row items-center p-3 mb-4 rounded-xl border ${
                 success
-                  ? "border-green-200 bg-green-50"
+                  ? "border-[#B8860B]/35 bg-[#F5F2EC]"
                   : "border-red-200 bg-red-50"
               }`}
             >
               {success ? (
-                <CheckCircle2 size={18} color="#16A34A" />
+                <CheckCircle2 size={18} color="#B8860B" />
               ) : (
                 <AlertCircle size={18} color="#DC2626" />
               )}
               <Text
-                className={`ml-2 flex-1 text-sm ${
-                  success ? "text-green-800" : "text-red-800"
+                className={`ml-2 flex-1 font-inter text-sm ${
+                  success ? "text-[#1C1C1C]" : "text-red-800"
                 }`}
               >
                 {success || error}
@@ -383,7 +401,7 @@ function ChangePasswordModal({
 
           <View className="flex-col gap-4">
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
                 Nueva contraseña
               </Text>
               <View className="relative justify-center">
@@ -392,24 +410,24 @@ function ChangePasswordModal({
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Mínimo 6 caracteres"
-                  placeholderTextColor="#9ca3af"
-                  className="h-12 pl-4 pr-12 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
+                  placeholderTextColor="#7A7A7A"
+                  className="h-12 pl-4 pr-12 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword((prev) => !prev)}
                   className="absolute right-4 p-1"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
 
             <View>
-              <Text className="text-[#5F5F5F] font-medium mb-2">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-2">
                 Confirmar nueva contraseña
               </Text>
               <View className="relative justify-center">
@@ -418,17 +436,17 @@ function ChangePasswordModal({
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Repite tu nueva contraseña"
-                  placeholderTextColor="#9ca3af"
-                  className="h-12 pl-4 pr-12 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-white"
+                  placeholderTextColor="#7A7A7A"
+                  className="h-12 pl-4 pr-12 rounded-xl border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] bg-[#FAFAFA]"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute right-4 p-1"
                 >
                   {showConfirmPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -441,7 +459,7 @@ function ChangePasswordModal({
                   void handleSubmit();
                 }}
                 disabled={isSubmitting}
-                className={`bg-[#6B8E23] rounded-xl py-3 items-center justify-center flex-row ${
+                className={`min-h-[48px] bg-[#B8860B] rounded-xl py-3 items-center justify-center flex-row ${
                   isSubmitting ? "opacity-60" : ""
                 }`}
               >
@@ -452,7 +470,7 @@ function ChangePasswordModal({
                     className="mr-2"
                   />
                 )}
-                <Text className="text-white font-medium">
+                <Text className="font-inter-medium text-white">
                   {isSubmitting ? "Actualizando..." : "Guardar contraseña"}
                 </Text>
               </TouchableOpacity>
@@ -460,9 +478,9 @@ function ChangePasswordModal({
               <TouchableOpacity
                 onPress={handleClose}
                 disabled={isSubmitting}
-                className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+                className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center justify-center"
               >
-                <Text className="text-[#6B8E23] font-medium">Cerrar</Text>
+                <Text className="font-inter-medium text-[#B8860B]">Cerrar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -472,99 +490,12 @@ function ChangePasswordModal({
   );
 }
 
-interface CancelBookingModalProps {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string) => void;
-  isLoading: boolean;
-  error?: string;
-}
-
-function CancelBookingModal({
-  open,
-  onClose,
-  onConfirm,
-  isLoading,
-  error,
-}: CancelBookingModalProps) {
-  const [reason, setReason] = useState("");
-
-  const handleClose = () => {
-    if (isLoading) return;
-    setReason("");
-    onClose();
-  };
-
-  return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
-      <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl">
-          <Text className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-2">
-            Cancelar reserva
-          </Text>
-          <Text className="text-sm text-[#5F5F5F]/75 mb-4">
-            ¿Estás seguro de que deseas cancelar esta reserva? Puedes indicar el
-            motivo opcionalmente.
-          </Text>
-
-          {error ? (
-            <View className="flex-row items-center p-3 mb-4 rounded-xl border border-red-200 bg-red-50">
-              <AlertCircle size={18} color="#DC2626" />
-              <Text className="ml-2 flex-1 text-sm text-red-800">{error}</Text>
-            </View>
-          ) : null}
-
-          <TextInput
-            value={reason}
-            onChangeText={setReason}
-            placeholder="Motivo de cancelación (opcional)"
-            placeholderTextColor="#9ca3af"
-            multiline
-            numberOfLines={3}
-            className="min-h-[80px] p-3 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-[#FAFAFA] mb-5"
-          />
-
-          <View className="flex-col gap-3">
-            <TouchableOpacity
-              onPress={() => onConfirm(reason.trim())}
-              disabled={isLoading}
-              className={`bg-red-600 rounded-xl py-3 items-center justify-center flex-row ${
-                isLoading ? "opacity-60" : ""
-              }`}
-            >
-              {isLoading && (
-                <ActivityIndicator
-                  size="small"
-                  color="#fff"
-                  className="mr-2"
-                />
-              )}
-              <Text className="text-white font-medium">
-                {isLoading ? "Cancelando..." : "Confirmar cancelación"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleClose}
-              disabled={isLoading}
-              className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
-            >
-              <Text className="text-[#6B8E23] font-medium">Volver</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
+// Modal de cancelación reutilizado desde ../../components/CancelBookingModal
 
 export function ProfilePage() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
 
   const [sessionUser, setSessionUser] = useState<TenantProfileData | null>(
     () => getSessionUserFromStorage() as TenantProfileData | null,
@@ -585,9 +516,23 @@ export function ProfilePage() {
   const [reservas, setReservas] = useState<Record<string, any>[]>([]);
   const [favoritos, setFavoritos] = useState<Record<string, any>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<
+  const normalizedRequestedTab =
+    requestedTab === "bookings" ||
+    requestedTab === "favorites" ||
+    requestedTab === "settings"
+      ? requestedTab
+      : undefined;
+  const [localTab, setLocalTab] = useState<
     "bookings" | "favorites" | "settings"
   >("bookings");
+  const activeTab = normalizedRequestedTab ?? localTab;
+  const setActiveTab = (nextTab: "bookings" | "favorites" | "settings") => {
+    setLocalTab(nextTab);
+    if (normalizedRequestedTab) {
+      router.setParams({ tab: nextTab } as any);
+    }
+  };
+  const [confirmSwitchHostOpen, setConfirmSwitchHostOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -875,16 +820,16 @@ export function ProfilePage() {
 
   if (!isAuthorizedTenant) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+      <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
         <StatusBar style="dark" />
         <HeaderInquilino />
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center px-6">
-          <View className="w-full max-w-md bg-white border border-[#6B8E23]/15 rounded-2xl p-6 shadow-sm items-center">
+          <View className="w-full max-w-md bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-sm items-center">
             <AlertCircle size={36} color="#DC2626" />
-            <Text className="mt-3 font-poppins font-semibold text-xl text-[#5F5F5F] text-center">
+            <Text className="mt-3 font-poppins font-semibold text-xl text-[#1C1C1C] text-center">
               No se pudo validar tu perfil de huésped
             </Text>
-            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+            <Text className="mt-2 font-inter text-sm text-[#595959] text-center leading-5">
               Tu sesión actual no incluye un identificador completo de inquilino.
               Vuelve a iniciar sesión para continuar.
             </Text>
@@ -893,14 +838,15 @@ export function ProfilePage() {
                 authService.logout();
                 router.replace("/loginPage" as any);
               }}
-              className="mt-5 w-full bg-[#6B8E23] rounded-xl py-3 items-center"
+              className="mt-5 min-h-[48px] justify-center w-full bg-[#B8860B] rounded-xl py-3 items-center"
             >
-              <Text className="text-white font-medium">
+              <Text className="font-inter-medium text-white">
                 Volver a iniciar sesión
               </Text>
             </TouchableOpacity>
           </View>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -908,15 +854,18 @@ export function ProfilePage() {
   if (isLoading && !userData?.nombre && !userData?.correo) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white"
+        className="flex-1 bg-[#FAFAFA]"
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
         <HeaderInquilino />
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center">
-          <ActivityIndicator size="large" color="#6B8E23" />
-          <Text className="mt-4 text-[#5F5F5F]">Cargando perfil...</Text>
+          <ActivityIndicator size="large" color="#B8860B" />
+          <Text className="mt-4 font-inter-medium text-[#1C1C1C]">
+            Cargando perfil...
+          </Text>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -1083,7 +1032,7 @@ export function ProfilePage() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <HeaderInquilino />
 
@@ -1092,31 +1041,31 @@ export function ProfilePage() {
         showsVerticalScrollIndicator={false}
       >
         {loadError ? (
-          <View className="mb-6 p-4 rounded-xl bg-yellow-50 border border-yellow-200">
-            <Text className="text-yellow-800 font-bold mb-1">
+          <View className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200">
+            <Text className="font-poppins text-amber-900 font-semibold mb-1">
               Perfil cargado parcialmente
             </Text>
-            <Text className="text-yellow-700">{loadError}</Text>
+            <Text className="font-inter text-amber-800">{loadError}</Text>
           </View>
         ) : null}
 
         {/* Profile Header */}
-        <View className="p-6 mb-6 bg-white border border-[#6B8E23]/10 shadow-sm rounded-2xl">
+        <View className="p-6 mb-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
           <View className="flex-col items-center">
-            <View className="h-24 w-24 bg-[#6B8E23] rounded-full border-4 border-[#F2E8CF] items-center justify-center mb-4">
-              <Text className="text-white text-2xl font-poppins font-bold">
+            <View className="h-24 w-24 bg-[#B8860B] rounded-full border-4 border-[#F5F2EC] items-center justify-center mb-4">
+              <Text className="text-white text-2xl font-poppins font-semibold">
                 {getInitials(userData.nombre)}
               </Text>
             </View>
 
             <View className="w-full items-center mb-5">
               <View className="flex-col items-center mb-4">
-                <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F] capitalize text-center mb-1.5">
+                <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C] capitalize text-center mb-1.5">
                   {userData.nombre || "Usuario"}
                 </Text>
-                <View className="flex-row items-center gap-1.5 bg-[#F2E8CF]/40 px-3 py-1 rounded-full">
-                  <Star size={16} color="#6B8E23" fill="#6B8E23" />
-                  <Text className="text-[#5F5F5F] font-medium text-sm">
+                <View className="flex-row items-center gap-1.5 bg-[#F5F2EC] border border-[#DCDCDC] px-3 py-1 rounded-full">
+                  <Star size={16} color="#B8860B" fill="#B8860B" />
+                  <Text className="font-inter-medium text-[#1C1C1C] text-sm">
                     Huésped en NoWayHome
                   </Text>
                 </View>
@@ -1124,22 +1073,22 @@ export function ProfilePage() {
 
               <View className="flex-col gap-2.5 w-full items-center">
                 <View className="flex-row items-center justify-center gap-2">
-                  <Mail size={16} color="#A67C52" />
-                  <Text className="text-[#5F5F5F] text-sm">
+                  <Mail size={16} color="#B87333" />
+                  <Text className="font-inter text-[#1C1C1C] text-sm">
                     {userData.correo || userData.email || "Sin correo"}
                   </Text>
                 </View>
                 {userData.telefono ? (
                   <View className="flex-row items-center justify-center gap-2">
-                    <Phone size={16} color="#A67C52" />
-                    <Text className="text-[#5F5F5F] text-sm">
+                    <Phone size={16} color="#B87333" />
+                    <Text className="font-inter text-[#1C1C1C] text-sm">
                       {userData.telefono}
                     </Text>
                   </View>
                 ) : null}
                 <View className="flex-row items-center justify-center gap-2">
-                  <Calendar size={16} color="#A67C52" />
-                  <Text className="text-[#5F5F5F] text-sm">
+                  <Calendar size={16} color="#B87333" />
+                  <Text className="font-inter text-[#595959] text-sm">
                     Miembro verificado
                   </Text>
                 </View>
@@ -1148,25 +1097,25 @@ export function ProfilePage() {
 
             <TouchableOpacity
               onPress={() => setIsEditOpen(true)}
-              className="w-full border-2 border-[#6B8E23] rounded-xl flex-row items-center justify-center py-3 px-6 gap-2"
+              className="min-h-[48px] w-full border-[1.5px] border-[#B8860B] rounded-xl flex-row items-center justify-center py-3 px-6 gap-2"
             >
-              <Edit size={16} color="#6B8E23" />
-              <Text className="text-[#6B8E23] font-medium">Editar</Text>
+              <Edit size={16} color="#B8860B" />
+              <Text className="font-inter-medium text-[#B8860B]">Editar</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Custom Tabs Navigation */}
-        <View className="flex-row bg-white border border-[#6B8E23]/10 p-1 rounded-xl mb-6">
+        <View className="flex-row bg-white border border-[#DCDCDC] p-1 rounded-xl mb-6">
           <TouchableOpacity
             onPress={() => setActiveTab("bookings")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "bookings" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "bookings" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "bookings" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "bookings" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Mis Reservas
@@ -1174,13 +1123,13 @@ export function ProfilePage() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setActiveTab("favorites")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "favorites" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "favorites" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "favorites" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "favorites" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Favoritos
@@ -1188,13 +1137,13 @@ export function ProfilePage() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setActiveTab("settings")}
-            className={`flex-1 py-2.5 rounded-lg items-center justify-center ${
-              activeTab === "settings" ? "bg-[#6B8E23]" : "bg-transparent"
+            className={`min-h-[44px] flex-1 py-2.5 rounded-lg items-center justify-center ${
+              activeTab === "settings" ? "bg-[#B8860B]" : "bg-transparent"
             }`}
           >
             <Text
-              className={`font-medium text-sm ${
-                activeTab === "settings" ? "text-white" : "text-[#5F5F5F]"
+              className={`font-inter-medium text-sm ${
+                activeTab === "settings" ? "text-white" : "text-[#1C1C1C]"
               }`}
             >
               Configuración
@@ -1206,20 +1155,22 @@ export function ProfilePage() {
         {activeTab === "bookings" && (
           <View className="mb-10 flex-col gap-6">
             <View className="flex-col gap-3 mb-2">
-              <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                 Próximas Reservas
               </Text>
               <TouchableOpacity
                 onPress={() => router.push("/inquilino/ExplorarPage" as any)}
-                className="bg-[#6B8E23] rounded-xl py-3 px-6 w-full items-center"
+                className="min-h-[48px] justify-center bg-[#B8860B] rounded-xl py-3 px-6 w-full items-center"
               >
-                <Text className="text-white font-medium">Nueva Reserva</Text>
+                <Text className="font-inter-medium text-white">
+                  Nueva Reserva
+                </Text>
               </TouchableOpacity>
             </View>
 
             {reservas.length === 0 ? (
-              <View className="py-12 items-center bg-white rounded-2xl border border-[#6B8E23]/10">
-                <Text className="text-[#5F5F5F]/70 text-center">
+              <View className="py-12 items-center bg-white rounded-2xl border border-[#DCDCDC]">
+                <Text className="font-inter text-[#595959] text-center">
                   Aún no tienes reservas realizadas.
                 </Text>
               </View>
@@ -1241,33 +1192,33 @@ export function ProfilePage() {
 
                   const statusColor =
                     estadoNormalizado === "confirmada"
-                      ? "text-[#6B8E23]"
+                      ? "text-[#B8860B]"
                       : estadoNormalizado === "cancelada" ||
                           estadoNormalizado === "rechazada"
-                        ? "text-red-600"
-                        : "text-[#A67C52]";
+                        ? "text-[#DC2626]"
+                        : "text-[#B87333]";
 
                   return (
                     <View
                       key={booking.id_reserva || `res-${index}`}
-                      className="p-6 bg-[#F2E8CF] rounded-2xl"
+                      className="p-5 bg-white border border-[#DCDCDC] rounded-2xl shadow-sm"
                     >
                       <View className="flex-col gap-4">
                         <View>
-                          <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-3">
+                          <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-3">
                             {getBookingTitle(booking)}
                           </Text>
                           <View className="flex-col gap-2">
                             <View className="flex-row items-center gap-2">
-                              <MapPin size={16} color="#A67C52" />
-                              <Text className="text-[#5F5F5F] text-sm">
+                              <MapPin size={16} color="#B87333" />
+                              <Text className="font-inter text-[#595959] text-sm">
                                 {getBookingLocation(booking)}
                               </Text>
                             </View>
                             <View className="flex-row items-center gap-2">
-                              <Calendar size={16} color="#A67C52" />
+                              <Calendar size={16} color="#B87333" />
                               <Text
-                                className="text-[#5F5F5F] text-sm flex-1"
+                                className="font-inter text-[#595959] text-sm flex-1"
                                 numberOfLines={2}
                               >
                                 {formatDateLong(getBookingStartDate(booking))}{" "}
@@ -1277,24 +1228,24 @@ export function ProfilePage() {
                           </View>
                         </View>
 
-                        <View className="flex-col items-start gap-3 pt-4 border-t border-[#6B8E23]/10">
+                        <View className="flex-col items-start gap-3 pt-4 border-t border-[#DCDCDC]">
                           <View className="items-start w-full">
-                            <Text className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                            <Text className="font-poppins font-semibold text-2xl text-[#B8860B]">
                               {formatPrice(getBookingTotal(booking))}
                             </Text>
-                            <Text className="text-sm text-[#5F5F5F] mt-1">
+                            <Text className="font-inter text-sm text-[#1C1C1C] mt-1">
                               Estado:{" "}
                               <Text
-                                className={`font-medium capitalize ${statusColor}`}
+                                className={`font-inter-semibold capitalize ${statusColor}`}
                               >
                                 {estadoNormalizado}
                               </Text>
                               {estadoNormalizado === "confirmada" ? (
                                 <Text
-                                  className={`font-semibold ${
+                                  className={`font-inter-semibold ${
                                     hasConfirmedPayment(booking)
-                                      ? "text-[#6B8E23]"
-                                      : "text-[#A67C52]"
+                                      ? "text-[#B8860B]"
+                                      : "text-[#B87333]"
                                   }`}
                                 >
                                   {hasConfirmedPayment(booking)
@@ -1320,19 +1271,19 @@ export function ProfilePage() {
                                   });
                                 }
                               }}
-                              className={`flex-1 rounded-xl py-2.5 items-center ${
+                              className={`min-h-[48px] justify-center flex-1 rounded-xl py-2.5 items-center ${
                                 estadoNormalizado === "confirmada" &&
                                 !hasConfirmedPayment(booking)
-                                  ? "bg-[#6B8E23]"
-                                  : "border-2 border-[#6B8E23]"
+                                  ? "bg-[#B8860B]"
+                                  : "border-[1.5px] border-[#B8860B]"
                               }`}
                             >
                               <Text
-                                className={`font-medium ${
+                                className={`font-inter-medium ${
                                   estadoNormalizado === "confirmada" &&
                                   !hasConfirmedPayment(booking)
                                     ? "text-white"
-                                    : "text-[#6B8E23]"
+                                    : "text-[#B8860B]"
                                 }`}
                               >
                                 {estadoNormalizado === "confirmada" &&
@@ -1350,9 +1301,9 @@ export function ProfilePage() {
                                   setBookingToCancel(booking);
                                   setCancellationError("");
                                 }}
-                                className="flex-1 bg-red-600 rounded-xl py-2.5 items-center"
+                                className="min-h-[48px] justify-center flex-1 bg-[#DC2626] rounded-xl py-2.5 items-center"
                               >
-                                <Text className="text-white font-medium">
+                                <Text className="font-inter-medium text-white">
                                   Cancelar
                                 </Text>
                               </TouchableOpacity>
@@ -1372,15 +1323,15 @@ export function ProfilePage() {
         {activeTab === "favorites" && (
           <View className="mb-10 flex-col gap-6">
             <View className="flex-row items-center gap-2 mb-2">
-              <Heart size={24} color="#6B8E23" fill="#6B8E23" />
-              <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+              <Heart size={24} color="#B8860B" fill="#B8860B" />
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                 Propiedades Favoritas
               </Text>
             </View>
 
             {favoritos.length === 0 ? (
-              <View className="py-12 items-center bg-white rounded-2xl border border-[#6B8E23]/10">
-                <Text className="text-[#5F5F5F]/70 text-center">
+              <View className="py-12 items-center bg-white rounded-2xl border border-[#DCDCDC]">
+                <Text className="font-inter text-[#595959] text-center">
                   Tu lista de favoritos está vacía.
                 </Text>
               </View>
@@ -1397,34 +1348,34 @@ export function ProfilePage() {
                       key={
                         favorite.id_favorito || propiedadId || `fav-${favIndex}`
                       }
-                      className="p-6 bg-[#F2E8CF] rounded-2xl"
+                      className="p-5 bg-white border border-[#DCDCDC] rounded-2xl shadow-sm"
                     >
                       <View className="flex-col gap-4">
                         <View>
                           <View className="flex-row justify-between items-start gap-4 mb-3">
-                            <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] flex-1">
+                            <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] flex-1">
                               {getFavoriteTitle(favorite)}
                             </Text>
                             <TouchableOpacity
                               onPress={() => handleRemoveFavorito(propiedadId)}
                               disabled={!propiedadId}
-                              className="p-1"
+                              className="h-10 w-10 items-center justify-center rounded-full bg-[#F5F2EC]"
                             >
-                              <Heart size={20} color="#6B8E23" fill="#6B8E23" />
+                              <Heart size={20} color="#B8860B" fill="#B8860B" />
                             </TouchableOpacity>
                           </View>
 
                           <View className="flex-row items-center gap-2">
-                            <MapPin size={16} color="#A67C52" />
-                            <Text className="text-[#5F5F5F] text-sm flex-1">
+                            <MapPin size={16} color="#B87333" />
+                            <Text className="font-inter text-[#595959] text-sm flex-1">
                               {getFavoriteLocation(favorite)}
                             </Text>
                           </View>
                         </View>
 
-                        <View className="flex-col items-start gap-3">
-                          <View className="items-start">
-                            <Text className="font-poppins font-semibold text-2xl text-[#6B8E23]">
+                        <View className="flex-col items-start gap-3 border-t border-[#DCDCDC] pt-3.5">
+                          <View className="flex-row items-baseline">
+                            <Text className="font-poppins font-semibold text-2xl text-[#B8860B]">
                               {formatPrice(
                                 favorite.propiedad?.precio_por_noche ||
                                   favorite.propiedad?.precio_noche ||
@@ -1434,7 +1385,7 @@ export function ProfilePage() {
                                   favorite.precio,
                               )}
                             </Text>
-                            <Text className="text-sm text-[#5F5F5F] mt-1">
+                            <Text className="font-inter text-sm text-[#595959] ml-1">
                               {favorite.propiedad?.tipo_precio === "mensual" ||
                               favorite.tipo_precio === "mensual"
                                 ? "/ mes"
@@ -1458,11 +1409,11 @@ export function ProfilePage() {
                               }
                             }}
                             disabled={!propiedadId}
-                            className={`w-full border-2 border-[#6B8E23] rounded-xl py-2.5 px-6 items-center mt-1 ${
+                            className={`min-h-[48px] justify-center w-full border-[1.5px] border-[#B8860B] rounded-xl py-2.5 px-6 items-center mt-1 ${
                               !propiedadId ? "opacity-50" : ""
                             }`}
                           >
-                            <Text className="text-[#6B8E23] font-medium">
+                            <Text className="font-inter-medium text-[#B8860B]">
                               Ver Detalles
                             </Text>
                           </TouchableOpacity>
@@ -1480,24 +1431,24 @@ export function ProfilePage() {
         {activeTab === "settings" && (
           <View className="mb-10 flex-col gap-6">
             <View className="flex-row items-center gap-2 mb-2">
-              <Settings size={24} color="#6B8E23" />
-              <Text className="font-poppins font-semibold text-2xl text-[#5F5F5F]">
+              <Settings size={24} color="#B87333" />
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C]">
                 Configuración de Cuenta
               </Text>
             </View>
 
-            <View className="p-6 bg-[#F2E8CF] rounded-2xl flex-col gap-4">
+            <View className="p-6 bg-[#F5F2EC] border border-[#DCDCDC] rounded-2xl flex-col gap-4">
               <View>
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-2">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-2">
                   Rol actual
                 </Text>
                 <View className="flex-row items-center gap-2">
-                  <View className="px-3 py-1 bg-white rounded-lg">
-                    <Text className="text-[#6B8E23] font-medium text-sm">
+                  <View className="px-3 py-1 bg-white border border-[#DCDCDC] rounded-lg">
+                    <Text className="font-inter-semibold text-[#B8860B] text-sm">
                       {userRole}
                     </Text>
                   </View>
-                  <Text className="text-sm text-[#5F5F5F]/70">
+                  <Text className="font-inter text-sm text-[#595959]">
                     Reservar alojamiento
                   </Text>
                 </View>
@@ -1505,22 +1456,34 @@ export function ProfilePage() {
 
               <TouchableOpacity
                 onPress={() => router.push("/inquilino/ExplorarPage" as any)}
-                className="border-2 border-[#6B8E23] rounded-xl py-3 px-4 w-full items-center"
+                className="min-h-[48px] justify-center border-[1.5px] border-[#B8860B] bg-white rounded-xl py-3 px-4 w-full items-center"
               >
-                <Text className="text-[#6B8E23] font-medium">
+                <Text className="font-inter-medium text-[#B8860B]">
                   Explorar alojamientos
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setConfirmSwitchHostOpen(true)}
+                className="min-h-[48px] flex-row justify-center bg-[#B8860B] rounded-xl py-3 px-4 w-full items-center gap-2"
+              >
+                <ArrowLeftRight size={17} color="#FFFFFF" />
+                <Text className="font-inter-medium text-white">
+                  Cambiar a Anfitrión
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View className="p-6 bg-white border border-[#6B8E23]/10 rounded-2xl shadow-sm flex-col gap-8">
+            <View className="p-6 bg-white border border-[#DCDCDC] rounded-2xl shadow-sm flex-col gap-8">
               <View>
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-5">
                   Preferencias de Notificaciones
                 </Text>
                 <View className="flex-col gap-4">
-                  <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
-                    <Text className="text-[#5F5F5F]">Ofertas especiales</Text>
+                  <View className="flex-row items-center justify-between py-2 border-b border-[#DCDCDC]">
+                    <Text className="font-inter text-[#1C1C1C]">
+                      Ofertas especiales
+                    </Text>
                     <Switch
                       value={notifPreferences.ofertas}
                       onValueChange={(val) =>
@@ -1529,12 +1492,12 @@ export function ProfilePage() {
                           ofertas: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
-                  <View className="flex-row items-center justify-between py-2 border-b border-gray-100">
-                    <Text className="text-[#5F5F5F]">
+                  <View className="flex-row items-center justify-between py-2 border-b border-[#DCDCDC]">
+                    <Text className="font-inter text-[#1C1C1C]">
                       Recordatorios de reserva
                     </Text>
                     <Switch
@@ -1545,12 +1508,12 @@ export function ProfilePage() {
                           recordatorios: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
                   <View className="flex-row items-center justify-between py-2">
-                    <Text className="text-[#5F5F5F]">Newsletter</Text>
+                    <Text className="font-inter text-[#1C1C1C]">Newsletter</Text>
                     <Switch
                       value={notifPreferences.newsletter}
                       onValueChange={(val) =>
@@ -1559,23 +1522,23 @@ export function ProfilePage() {
                           newsletter: val,
                         })
                       }
-                      trackColor={{ false: "#d1d5db", true: "#6B8E23" }}
+                      trackColor={{ false: "#DCDCDC", true: "#B8860B" }}
                       thumbColor="#fff"
                     />
                   </View>
                 </View>
               </View>
 
-              <View className="pt-6 border-t border-[#6B8E23]/10">
-                <Text className="font-poppins font-semibold text-lg text-[#5F5F5F] mb-5">
+              <View className="pt-6 border-t border-[#DCDCDC]">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-5">
                   Seguridad
                 </Text>
                 <TouchableOpacity
                   onPress={() => setIsChangePasswordOpen(true)}
-                  className="border-2 border-[#6B8E23]/20 rounded-xl py-3 px-4 flex-row items-center justify-start w-full gap-3"
+                  className="min-h-[48px] border-[1.5px] border-[#DCDCDC] bg-[#FAFAFA] rounded-xl py-3 px-4 flex-row items-center justify-start w-full gap-3"
                 >
-                  <Lock size={18} color="#5F5F5F" />
-                  <Text className="text-[#5F5F5F] font-medium">
+                  <Lock size={18} color="#B87333" />
+                  <Text className="font-inter-medium text-[#1C1C1C]">
                     Cambiar contraseña
                   </Text>
                 </TouchableOpacity>
@@ -1584,6 +1547,8 @@ export function ProfilePage() {
           </View>
         )}
       </ScrollView>
+
+      <BottomTabBar />
 
       <EditInquilinoModal
         key={isEditOpen ? "edit-open" : "edit-closed"}
@@ -1608,6 +1573,25 @@ export function ProfilePage() {
         onConfirm={handleCancelBooking}
         isLoading={isCancelling}
         error={cancellationError}
+        requireReason={false}
+        description="¿Estás seguro de que deseas cancelar esta reserva? Puedes indicar el motivo opcionalmente."
+      />
+      <ConfirmActionModal
+        open={confirmSwitchHostOpen}
+        type="confirm"
+        title="Cambiar a Anfitrión"
+        description="¿Deseas cambiar tu vista activa al modo Anfitrión para gestionar propiedades y reservas?"
+        cancelLabel="Cancelar"
+        confirmLabel="Sí, cambiar"
+        confirmVariant="adminPrimary"
+        onCancel={() => setConfirmSwitchHostOpen(false)}
+        onConfirm={() => {
+          setConfirmSwitchHostOpen(false);
+          const res = authService.switchRole("arrendatario");
+          if (res?.success) {
+            router.replace("/arrendatario/profileArrendatario" as any);
+          }
+        }}
       />
     </SafeAreaView>
   );

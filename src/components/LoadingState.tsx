@@ -16,8 +16,8 @@ export function LoadingState({
       className={`min-h-[220px] flex-col items-center justify-center p-6 ${className}`}
       {...props}
     >
-      <ActivityIndicator size="large" color="#6B8E23" />
-      <Text className="mt-4 font-poppins font-medium text-[#5F5F5F] text-center">
+      <ActivityIndicator size="large" color="#B8860B" />
+      <Text className="mt-4 font-inter-medium text-[#1C1C1C] text-center">
         {message}
       </Text>
     </View>

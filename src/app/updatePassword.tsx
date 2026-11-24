@@ -94,7 +94,7 @@ export function UpdatePassword() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <Header />
 
@@ -105,12 +105,12 @@ export function UpdatePassword() {
         className="flex-1 bg-[#FAFAFA]"
       >
         <View className="flex-1 justify-center items-center px-5 py-10">
-          <View className="w-full max-w-md p-6 bg-white border border-[#6B8E23]/15 shadow-sm rounded-3xl">
+          <View className="w-full max-w-md p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
             <View className="items-center mb-8">
-              <Text className="font-bold text-3xl text-[#5F5F5F] mb-2 text-center">
+              <Text className="font-poppins font-semibold text-3xl text-[#1C1C1C] mb-2 text-center">
                 Cambiar contraseña
               </Text>
-              <Text className="text-[#5F5F5F]/75 text-sm leading-5 text-center">
+              <Text className="font-inter text-[#595959] text-sm leading-5 text-center">
                 Ingresa y confirma la nueva contraseña para tu cuenta.
               </Text>
             </View>
@@ -119,18 +119,18 @@ export function UpdatePassword() {
               <View
                 className={`flex-row items-center p-4 mb-6 rounded-xl border ${
                   success
-                    ? "border-green-200 bg-green-50"
+                    ? "border-[#B8860B]/35 bg-[#F5F2EC]"
                     : "border-red-200 bg-red-50"
                 }`}
               >
                 {success ? (
-                  <CheckCircle2 size={18} color="#16A34A" />
+                  <CheckCircle2 size={18} color="#B8860B" />
                 ) : (
                   <AlertCircle size={18} color="#DC2626" />
                 )}
                 <Text
-                  className={`ml-3 flex-1 text-sm ${
-                    success ? "text-green-800" : "text-red-800"
+                  className={`font-inter ml-3 flex-1 text-sm ${
+                    success ? "text-[#1C1C1C]" : "text-red-800"
                   }`}
                 >
                   {success || error}
@@ -139,21 +139,21 @@ export function UpdatePassword() {
             ) : null}
 
             <View className="mb-4">
-              <Text className="text-[#5F5F5F] font-medium mb-1.5">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
                 Nueva contraseña
               </Text>
               <View className="relative justify-center">
                 <View className="absolute left-4 z-10">
-                  <Lock size={20} color="#A67C52" />
+                  <Lock size={20} color="#B87333" />
                 </View>
                 <TextInput
                   secureTextEntry={!showPassword}
                   placeholder="Mínimo 6 caracteres"
-                  placeholderTextColor="#5F5F5F55"
+                  placeholderTextColor="#7A7A7A"
                   value={password}
                   onChangeText={setPassword}
                   editable={!isLoading}
-                  className="pl-12 pr-12 h-12 bg-[#FAFAFA] border border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                  className="pl-12 pr-12 h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] rounded-xl"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword((prev) => !prev)}
@@ -161,30 +161,30 @@ export function UpdatePassword() {
                   className="absolute right-4 z-10 p-1"
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
 
             <View className="mb-6">
-              <Text className="text-[#5F5F5F] font-medium mb-1.5">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
                 Confirmar nueva contraseña
               </Text>
               <View className="relative justify-center">
                 <View className="absolute left-4 z-10">
-                  <Lock size={20} color="#A67C52" />
+                  <Lock size={20} color="#B87333" />
                 </View>
                 <TextInput
                   secureTextEntry={!showConfirmPassword}
                   placeholder="Repite la contraseña"
-                  placeholderTextColor="#5F5F5F55"
+                  placeholderTextColor="#7A7A7A"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   editable={!isLoading}
-                  className="pl-12 pr-12 h-12 bg-[#FAFAFA] border border-[#6B8E23]/20 focus:border-[#6B8E23] text-[#5F5F5F] rounded-xl"
+                  className="pl-12 pr-12 h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] rounded-xl"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword((prev) => !prev)}
@@ -192,9 +192,9 @@ export function UpdatePassword() {
                   className="absolute right-4 z-10 p-1"
                 >
                   {showConfirmPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -203,7 +203,7 @@ export function UpdatePassword() {
             <TouchableOpacity
               onPress={handleUpdatePassword}
               disabled={isLoading}
-              className={`flex-row w-full bg-[#6B8E23] h-12 rounded-xl justify-center items-center mb-3 ${
+              className={`flex-row w-full bg-[#B8860B] active:bg-[#9A6F09] min-h-[48px] rounded-xl justify-center items-center mb-3 ${
                 isLoading ? "opacity-50" : ""
               }`}
             >
@@ -211,7 +211,7 @@ export function UpdatePassword() {
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
-                  <Text className="text-white font-medium text-base mr-2">
+                  <Text className="font-inter-medium text-white text-base mr-2">
                     Actualizar contraseña
                   </Text>
                   <ArrowRight size={20} color="#FFFFFF" />
@@ -221,10 +221,10 @@ export function UpdatePassword() {
 
             <TouchableOpacity
               onPress={() => router.replace("/" as any)}
-              className="flex-row w-full h-11 rounded-xl justify-center items-center bg-transparent"
+              className="flex-row w-full min-h-[48px] rounded-xl justify-center items-center border-[1.5px] border-[#B8860B] bg-transparent"
             >
-              <ArrowLeft size={16} color="#6B8E23" />
-              <Text className="text-[#6B8E23] font-medium ml-2">
+              <ArrowLeft size={16} color="#B8860B" />
+              <Text className="font-inter-medium text-[#B8860B] ml-2">
                 Volver al inicio
               </Text>
             </TouchableOpacity>

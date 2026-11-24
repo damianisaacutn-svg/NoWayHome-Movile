@@ -25,21 +25,21 @@ const variants: Record<AlertVariant, VariantConfig> = {
   },
   success: {
     icon: CheckCircle2,
-    containerClassName: "border-[#6B8E23]/30 bg-[#F2E8CF]",
-    textClassName: "text-[#5F5F5F]",
-    iconColor: "#6B8E23",
+    containerClassName: "border-[#B8860B]/30 bg-[#F5F2EC]",
+    textClassName: "text-[#1C1C1C]",
+    iconColor: "#B8860B",
   },
   warning: {
     icon: TriangleAlert,
-    containerClassName: "border-amber-200 bg-amber-50",
-    textClassName: "text-amber-800",
-    iconColor: "#D97706",
+    containerClassName: "border-[#B87333]/35 bg-amber-50",
+    textClassName: "text-[#1C1C1C]",
+    iconColor: "#B87333",
   },
   info: {
     icon: Info,
-    containerClassName: "border-[#6B8E23]/20 bg-white",
-    textClassName: "text-[#5F5F5F]",
-    iconColor: "#6B8E23",
+    containerClassName: "border-[#DCDCDC] bg-white",
+    textClassName: "text-[#1C1C1C]",
+    iconColor: "#B87333",
   },
 };
 
@@ -73,13 +73,13 @@ export function AlertMessage({
       </View>
       <View className="flex-1">
         {title ? (
-          <Text className={`font-semibold text-sm ${variant.textClassName}`}>
+          <Text className={`font-poppins font-semibold text-sm ${variant.textClassName}`}>
             {title}
           </Text>
         ) : null}
         {message ? (
           <Text
-            className={`text-sm ${title ? "mt-1" : ""} ${variant.textClassName}`}
+            className={`font-inter text-sm leading-5 ${title ? "mt-1" : ""} ${variant.textClassName}`}
           >
             {message}
           </Text>

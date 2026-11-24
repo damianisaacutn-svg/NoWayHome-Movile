@@ -38,8 +38,10 @@ import {
   resolveUserRole,
 } from "@/utils/sessionRole";
 import { AlertMessage, type AlertVariant } from "../../components/AlertMessage";
+import { BottomTabBar } from "../../components/BottomTabBar";
 import { HeaderInquilino } from "../../components/headerInquilino";
 import { LoadingState } from "../../components/LoadingState";
+import { StepIndicator } from "../../components/StepIndicator";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function buildEndpointUrl(path: string): string {
@@ -147,32 +149,32 @@ function CalendarPickerModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50 px-4">
-        <View className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
+        <View className="w-full max-w-sm rounded-2xl border border-[#DCDCDC] bg-white p-5 shadow-xl">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="font-poppins text-lg font-semibold text-[#5F5F5F]">
+            <Text className="font-poppins text-lg font-semibold text-[#1C1C1C]">
               {title}
             </Text>
-            <TouchableOpacity onPress={onClose} className="p-1">
-              <X size={20} color="#5F5F5F" />
+            <TouchableOpacity onPress={onClose} className="p-1.5">
+              <X size={20} color="#1C1C1C" />
             </TouchableOpacity>
           </View>
 
           {/* Navegación de Mes */}
-          <View className="flex-row items-center justify-between mb-4 bg-[#FAFAFA] rounded-xl p-2 border border-[#6B8E23]/15">
+          <View className="flex-row items-center justify-between mb-4 bg-[#FAFAFA] rounded-xl p-2 border border-[#DCDCDC]">
             <TouchableOpacity
               onPress={handlePrevMonth}
-              className="p-2 rounded-lg bg-white"
+              className="p-2 rounded-lg bg-white border border-[#DCDCDC]"
             >
-              <ChevronLeft size={18} color="#5F5F5F" />
+              <ChevronLeft size={18} color="#1C1C1C" />
             </TouchableOpacity>
-            <Text className="font-poppins font-semibold text-base text-[#5F5F5F]">
+            <Text className="font-poppins font-semibold text-base text-[#1C1C1C]">
               {MONTH_NAMES[viewMonth]} {viewYear}
             </Text>
             <TouchableOpacity
               onPress={handleNextMonth}
-              className="p-2 rounded-lg bg-white"
+              className="p-2 rounded-lg bg-white border border-[#DCDCDC]"
             >
-              <ChevronRight size={18} color="#5F5F5F" />
+              <ChevronRight size={18} color="#1C1C1C" />
             </TouchableOpacity>
           </View>
 
@@ -180,7 +182,7 @@ function CalendarPickerModal({
           <View className="flex-row mb-2">
             {WEEK_DAYS.map((wd) => (
               <View key={wd} className="flex-1 items-center">
-                <Text className="text-xs font-semibold text-[#A67C52]">
+                <Text className="font-inter-semibold text-xs text-[#B87333]">
                   {wd}
                 </Text>
               </View>
@@ -213,19 +215,19 @@ function CalendarPickerModal({
                   <View
                     className={`h-9 w-9 rounded-full items-center justify-center ${
                       isSelected
-                        ? "bg-[#6B8E23]"
+                        ? "bg-[#B8860B]"
                         : isDisabled
                           ? "bg-transparent"
                           : "bg-[#FAFAFA]"
                     }`}
                   >
                     <Text
-                      className={`text-sm ${
+                      className={`font-inter-medium text-sm ${
                         isSelected
-                          ? "text-white font-bold"
+                          ? "text-white font-semibold"
                           : isDisabled
-                            ? "text-gray-300"
-                            : "text-[#5F5F5F] font-medium"
+                            ? "text-[#DCDCDC]"
+                            : "text-[#1C1C1C]"
                       }`}
                     >
                       {day}
@@ -238,9 +240,11 @@ function CalendarPickerModal({
 
           <TouchableOpacity
             onPress={onClose}
-            className="mt-4 border border-[#6B8E23] rounded-xl py-2.5 items-center"
+            className="mt-4 min-h-[44px] justify-center border-[1.5px] border-[#B8860B] rounded-xl py-2.5 items-center"
           >
-            <Text className="text-[#6B8E23] font-semibold text-sm">Cerrar</Text>
+            <Text className="font-inter-medium text-[#B8860B] text-sm">
+              Cerrar
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -270,6 +274,7 @@ export function ReservaPage() {
 
   const [showPickerInicio, setShowPickerInicio] = useState(false);
   const [showPickerFin, setShowPickerFin] = useState(false);
+  const [step, setStep] = useState<0 | 1>(0);
 
   const today = useMemo(() => {
     const d = new Date();
@@ -567,7 +572,7 @@ export function ReservaPage() {
   if (isLoading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white"
+        className="flex-1 bg-[#FAFAFA]"
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
@@ -575,6 +580,7 @@ export function ReservaPage() {
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center">
           <LoadingState message="Preparando tu reserva..." />
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -582,7 +588,7 @@ export function ReservaPage() {
   if (!propiedad) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white"
+        className="flex-1 bg-[#FAFAFA]"
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
@@ -599,11 +605,14 @@ export function ReservaPage() {
           />
           <TouchableOpacity
             onPress={() => router.push("/inquilino/ExplorarPage" as any)}
-            className="bg-[#6B8E23] rounded-xl px-6 py-3.5"
+            className="min-h-[48px] justify-center bg-[#B8860B] rounded-xl px-6 py-3.5"
           >
-            <Text className="text-white font-semibold">Volver al catálogo</Text>
+            <Text className="font-inter-medium text-white">
+              Volver al catálogo
+            </Text>
           </TouchableOpacity>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -631,7 +640,7 @@ export function ReservaPage() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       <HeaderInquilino />
 
@@ -643,10 +652,10 @@ export function ReservaPage() {
         {/* Botón Volver */}
         <TouchableOpacity
           onPress={handleBack}
-          className="flex-row items-center mb-5 self-start"
+          className="flex-row items-center mb-5 self-start min-h-[44px]"
         >
-          <ArrowLeft size={20} color="#A67C52" />
-          <Text className="ml-2 text-sm font-medium text-[#5F5F5F]">
+          <ArrowLeft size={20} color="#B87333" />
+          <Text className="ml-2 font-inter-medium text-sm text-[#1C1C1C]">
             Volver a la propiedad
           </Text>
         </TouchableOpacity>
@@ -662,21 +671,21 @@ export function ReservaPage() {
         ) : null}
 
         {/* Encabezado e Imagen de la Propiedad */}
-        <View className="mb-6 bg-white rounded-2xl p-4 border border-[#6B8E23]/10 shadow-sm">
-          <View className="w-full h-48 rounded-xl overflow-hidden bg-[#F2E8CF] mb-4">
+        <View className="mb-6 bg-white rounded-2xl p-4 border border-[#DCDCDC] shadow-sm">
+          <View className="w-full h-48 rounded-xl overflow-hidden bg-[#F5F2EC] mb-4">
             <Image
               source={{ uri: propertyImage }}
               className="w-full h-full"
               resizeMode="cover"
             />
           </View>
-          <Text className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-1.5">
+          <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-1.5">
             {propertyTitle}
           </Text>
           <View className="flex-row items-center">
-            <MapPin size={16} color="#A67C52" />
+            <MapPin size={16} color="#B87333" />
             <Text
-              className="ml-1.5 text-sm text-[#5F5F5F]/80 flex-1"
+              className="ml-1.5 font-inter text-sm text-[#595959] flex-1"
               numberOfLines={1}
             >
               {propertyLocation}
@@ -684,174 +693,219 @@ export function ReservaPage() {
           </View>
         </View>
 
-        {/* Tarjeta del Formulario de Reserva */}
-        <View className="bg-white rounded-2xl border border-[#6B8E23]/10 p-5 shadow-sm mb-6">
-          <Text className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-5">
+        {/* Tarjeta del Formulario de Reserva por Etapas */}
+        <View className="bg-white rounded-2xl border border-[#DCDCDC] p-5 shadow-sm mb-6">
+          <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">
             Completa los datos de tu reserva
           </Text>
 
-          {/* Selectores de Fechas */}
-          <View className="flex-col gap-4 mb-5">
-            <View>
-              <Text className="text-sm font-medium text-[#5F5F5F]/80 mb-2">
-                Fecha de Entrada
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowPickerInicio(true)}
-                className="h-12 border border-[#6B8E23]/20 rounded-xl px-4 flex-row items-center justify-between bg-[#FAFAFA]"
-              >
-                <Text
-                  className={`text-base ${
-                    fechaInicio
-                      ? "text-[#5F5F5F] font-medium"
-                      : "text-[#5F5F5F]/45"
-                  }`}
-                >
-                  {fechaInicio || "Seleccionar fecha (AAAA-MM-DD)"}
-                </Text>
-                <CalendarIcon size={18} color="#A67C52" />
-              </TouchableOpacity>
-            </View>
+          <StepIndicator
+            steps={["Fechas y huéspedes", "Resumen y solicitud"]}
+            currentStep={step}
+            onStepPress={(idx) => {
+              if (idx === 0) setStep(0);
+            }}
+          />
 
+          {step === 0 ? (
             <View>
-              <Text className="text-sm font-medium text-[#5F5F5F]/80 mb-2">
-                Fecha de Salida
-              </Text>
+              <View className="flex-col gap-4 mb-6">
+                <View>
+                  <Text className="font-inter-medium text-sm text-[#1C1C1C] mb-2">
+                    Fecha de Entrada
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowPickerInicio(true)}
+                    className="min-h-[48px] border border-[#DCDCDC] rounded-xl px-4 flex-row items-center justify-between bg-[#FAFAFA]"
+                  >
+                    <Text
+                      className={`font-inter-medium text-base ${
+                        fechaInicio ? "text-[#1C1C1C]" : "text-[#7A7A7A]"
+                      }`}
+                    >
+                      {fechaInicio || "Seleccionar fecha (AAAA-MM-DD)"}
+                    </Text>
+                    <CalendarIcon size={18} color="#B87333" />
+                  </TouchableOpacity>
+                </View>
+
+                <View>
+                  <Text className="font-inter-medium text-sm text-[#1C1C1C] mb-2">
+                    Fecha de Salida
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (fechaInicio) setShowPickerFin(true);
+                    }}
+                    disabled={!fechaInicio}
+                    className={`min-h-[48px] border border-[#DCDCDC] rounded-xl px-4 flex-row items-center justify-between ${
+                      !fechaInicio ? "bg-[#DCDCDC]/40 opacity-60" : "bg-[#FAFAFA]"
+                    }`}
+                  >
+                    <Text
+                      className={`font-inter-medium text-base ${
+                        fechaFin ? "text-[#1C1C1C]" : "text-[#7A7A7A]"
+                      }`}
+                    >
+                      {fechaFin || "Seleccionar fecha (AAAA-MM-DD)"}
+                    </Text>
+                    <CalendarIcon
+                      size={18}
+                      color={!fechaInicio ? "#7A7A7A" : "#B87333"}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Selector de Huéspedes */}
+                <View>
+                  <Text className="font-inter-medium text-sm text-[#1C1C1C] mb-2">
+                    Huéspedes
+                  </Text>
+                  <View className="min-h-[48px] border border-[#DCDCDC] rounded-xl px-4 flex-row items-center justify-between bg-[#FAFAFA]">
+                    <View className="flex-row items-center gap-2">
+                      <Users size={18} color="#B87333" />
+                      <Text className="font-inter-medium text-base text-[#1C1C1C]">
+                        {huespedes} {huespedes === 1 ? "huésped" : "huéspedes"}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-3">
+                      <TouchableOpacity
+                        disabled={huespedes <= 1}
+                        onPress={() => setHuespedes((h) => Math.max(1, h - 1))}
+                        className={`h-9 w-9 rounded-full border border-[#DCDCDC] items-center justify-center bg-white ${
+                          huespedes <= 1 ? "opacity-40" : ""
+                        }`}
+                      >
+                        <Minus size={14} color="#1C1C1C" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        disabled={huespedes >= maxHuespedes}
+                        onPress={() =>
+                          setHuespedes((h) => Math.min(maxHuespedes, h + 1))
+                        }
+                        className={`h-9 w-9 rounded-full border border-[#DCDCDC] items-center justify-center bg-white ${
+                          huespedes >= maxHuespedes ? "opacity-40" : ""
+                        }`}
+                      >
+                        <Plus size={14} color="#1C1C1C" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
               <TouchableOpacity
                 onPress={() => {
-                  if (fechaInicio) setShowPickerFin(true);
+                  if (!costos || !fechaInicio || !fechaFin) {
+                    setMessage({
+                      type: "error",
+                      title: "Fechas incompletas",
+                      text: "Selecciona las fechas de entrada y salida para continuar.",
+                    });
+                    return;
+                  }
+                  setMessage({ type: "", title: "", text: "" });
+                  setStep(1);
                 }}
-                disabled={!fechaInicio}
-                className={`h-12 border border-[#6B8E23]/20 rounded-xl px-4 flex-row items-center justify-between ${
-                  !fechaInicio ? "bg-gray-100 opacity-60" : "bg-[#FAFAFA]"
-                }`}
+                className="min-h-[48px] rounded-xl bg-[#B8860B] items-center justify-center"
               >
-                <Text
-                  className={`text-base ${
-                    fechaFin
-                      ? "text-[#5F5F5F] font-medium"
-                      : "text-[#5F5F5F]/45"
-                  }`}
-                >
-                  {fechaFin || "Seleccionar fecha (AAAA-MM-DD)"}
+                <Text className="font-inter-medium text-white text-base">
+                  Continuar al resumen
                 </Text>
-                <CalendarIcon
-                  size={18}
-                  color={!fechaInicio ? "#9CA3AF" : "#A67C52"}
-                />
               </TouchableOpacity>
             </View>
-
-            {/* Selector de Huéspedes */}
+          ) : (
             <View>
-              <Text className="text-sm font-medium text-[#5F5F5F]/80 mb-2">
-                Huéspedes
-              </Text>
-              <View className="h-12 border border-[#6B8E23]/20 rounded-xl px-4 flex-row items-center justify-between bg-[#FAFAFA]">
-                <View className="flex-row items-center gap-2">
-                  <Users size={18} color="#A67C52" />
-                  <Text className="text-base font-medium text-[#5F5F5F]">
-                    {huespedes} {huespedes === 1 ? "huésped" : "huéspedes"}
+              {/* Resumen de Precios */}
+              {costos ? (
+                <View className="rounded-2xl bg-[#F5F2EC] border border-[#DCDCDC] p-5 mb-5">
+                  <Text className="font-poppins font-semibold text-base text-[#1C1C1C] mb-3">
+                    Resumen de pago
                   </Text>
+                  <Text className="font-inter text-xs text-[#595959] mb-3">
+                    Entrada: {fechaInicio} • Salida: {fechaFin} • {huespedes}{" "}
+                    {huespedes === 1 ? "huésped" : "huéspedes"}
+                  </Text>
+                  {String(
+                    (propiedad as Record<string, any>).tipo_precio || "",
+                  ).toLowerCase() === "mensual" && (
+                    <Text className="font-inter text-xs text-[#B87333] mb-2">
+                      Tarifa de referencia publicada como mensual (cálculo estimado por noche).
+                    </Text>
+                  )}
+                  <View className="flex-col gap-2 mb-3">
+                    <View className="flex-row justify-between">
+                      <Text className="font-inter text-sm text-[#595959]">
+                        {formatPrice(costos.precioNoche)} × {costos.dias}{" "}
+                        {costos.dias === 1 ? "noche" : "noches"}
+                      </Text>
+                      <Text className="font-inter-medium text-sm text-[#1C1C1C]">
+                        {formatPrice(costos.subtotal)}
+                      </Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="font-inter text-sm text-[#595959]">
+                        Comisión y otros
+                      </Text>
+                      <Text className="font-inter-medium text-sm text-[#1C1C1C]">
+                        {formatPrice(costos.comision)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="flex-row justify-between items-center border-t border-[#DCDCDC] pt-3">
+                    <Text className="font-inter-semibold text-base text-[#1C1C1C]">
+                      Total a pagar
+                    </Text>
+                    <Text className="font-poppins font-semibold text-xl text-[#B8860B]">
+                      {formatPrice(costos.total)}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-row items-center gap-3">
-                  <TouchableOpacity
-                    disabled={huespedes <= 1}
-                    onPress={() => setHuespedes((h) => Math.max(1, h - 1))}
-                    className={`h-8 w-8 rounded-full border border-[#6B8E23]/30 items-center justify-center bg-white ${
-                      huespedes <= 1 ? "opacity-40" : ""
-                    }`}
-                  >
-                    <Minus size={14} color="#5F5F5F" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    disabled={huespedes >= maxHuespedes}
-                    onPress={() =>
-                      setHuespedes((h) => Math.min(maxHuespedes, h + 1))
-                    }
-                    className={`h-8 w-8 rounded-full border border-[#6B8E23]/30 items-center justify-center bg-white ${
-                      huespedes >= maxHuespedes ? "opacity-40" : ""
-                    }`}
-                  >
-                    <Plus size={14} color="#5F5F5F" />
-                  </TouchableOpacity>
-                </View>
+              ) : null}
+
+              <Text className="font-inter text-xs text-center text-[#595959] mb-5 leading-relaxed">
+                Al hacer clic en &quot;Solicitar Reserva&quot;, tu solicitud será
+                enviada al anfitrión para su aprobación. No se te cobrará nada en
+                este momento.
+              </Text>
+
+              {/* Botones de Acción */}
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => setStep(0)}
+                  disabled={isSubmitting}
+                  className="min-h-[48px] px-4 rounded-xl border-[1.5px] border-[#B8860B] items-center justify-center"
+                >
+                  <Text className="font-inter-medium text-[#B8860B] text-sm">
+                    Editar fechas
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => void handleSolicitarReserva()}
+                  disabled={!costos || !fechaInicio || !fechaFin || isSubmitting}
+                  className={`flex-1 min-h-[48px] rounded-xl bg-[#B8860B] items-center justify-center ${
+                    !costos || !fechaInicio || !fechaFin || isSubmitting
+                      ? "opacity-60"
+                      : ""
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <View className="flex-row items-center gap-2">
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text className="font-inter-medium text-white text-sm">
+                        Enviando...
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className="font-inter-medium text-white text-base">
+                      Solicitar Reserva
+                    </Text>
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-
-          {/* Resumen de Precios */}
-          {costos ? (
-            <View className="rounded-2xl bg-[#F2E8CF] p-5 mb-6">
-              <Text className="font-poppins font-semibold text-base text-[#5F5F5F] mb-3">
-                Resumen de pago
-              </Text>
-              {String(
-                (propiedad as Record<string, any>).tipo_precio || "",
-              ).toLowerCase() === "mensual" && (
-                <Text className="text-xs text-[#A67C52] mb-2">
-                  Tarifa de referencia publicada como mensual (cálculo estimado por noche).
-                </Text>
-              )}
-              <View className="flex-col gap-2 mb-3">
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-[#5F5F5F]/85">
-                    {formatPrice(costos.precioNoche)} × {costos.dias}{" "}
-                    {costos.dias === 1 ? "noche" : "noches"}
-                  </Text>
-                  <Text className="text-sm font-medium text-[#5F5F5F]">
-                    {formatPrice(costos.subtotal)}
-                  </Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-[#5F5F5F]/85">
-                    Comisión y otros
-                  </Text>
-                  <Text className="text-sm font-medium text-[#5F5F5F]">
-                    {formatPrice(costos.comision)}
-                  </Text>
-                </View>
-              </View>
-              <View className="flex-row justify-between items-center border-t border-[#A67C52]/20 pt-3">
-                <Text className="font-semibold text-base text-[#5F5F5F]">
-                  Total a pagar
-                </Text>
-                <Text className="font-poppins font-bold text-xl text-[#6B8E23]">
-                  {formatPrice(costos.total)}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
-          <Text className="text-xs text-center text-[#5F5F5F]/80 mb-5 leading-relaxed">
-            Al hacer clic en &quot;Solicitar Reserva&quot;, tu solicitud será
-            enviada al anfitrión para su aprobación. No se te cobrará nada en
-            este momento.
-          </Text>
-
-          {/* Botón de Enviar */}
-          <TouchableOpacity
-            onPress={() => void handleSolicitarReserva()}
-            disabled={!costos || !fechaInicio || !fechaFin || isSubmitting}
-            className={`h-14 rounded-xl bg-[#6B8E23] items-center justify-center ${
-              !costos || !fechaInicio || !fechaFin || isSubmitting
-                ? "opacity-60"
-                : ""
-            }`}
-          >
-            {isSubmitting ? (
-              <View className="flex-row items-center gap-2">
-                <ActivityIndicator size="small" color="#fff" />
-                <Text className="text-white font-semibold text-base">
-                  Enviando Solicitud...
-                </Text>
-              </View>
-            ) : (
-              <Text className="text-white font-semibold text-base">
-                Solicitar Reserva
-              </Text>
-            )}
-          </TouchableOpacity>
+          )}
         </View>
 
         <CalendarPickerModal
@@ -882,6 +936,8 @@ export function ReservaPage() {
           onClose={() => setShowPickerFin(false)}
         />
       </ScrollView>
+
+      <BottomTabBar />
     </SafeAreaView>
   );
 }

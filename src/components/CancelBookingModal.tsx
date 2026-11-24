@@ -32,6 +32,7 @@ export function CancelBookingModal({
 }: CancelBookingModalProps) {
   const [reason, setReason] = useState("");
   const [localError, setLocalError] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleClose = () => {
     if (isLoading) return;
@@ -60,24 +61,24 @@ export function CancelBookingModal({
       onRequestClose={handleClose}
     >
       <View className="flex-1 items-center justify-center bg-black/50 px-4">
-        <View className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-          <Text className="font-poppins text-xl font-semibold text-[#5F5F5F] mb-2">
+        <View className="w-full max-w-md rounded-2xl border border-[#DCDCDC] bg-white p-6 shadow-xl">
+          <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-2">
             {title}
           </Text>
-          <Text className="text-sm text-[#5F5F5F]/75 mb-4 leading-5">
+          <Text className="font-inter text-sm text-[#595959] mb-4 leading-5">
             {description}
           </Text>
 
           {displayError ? (
             <View className="flex-row items-center p-3 mb-4 rounded-xl border border-red-200 bg-red-50">
               <AlertCircle size={18} color="#DC2626" />
-              <Text className="ml-2 flex-1 text-sm text-red-800">
+              <Text className="ml-2 flex-1 font-inter text-sm text-red-800">
                 {displayError}
               </Text>
             </View>
           ) : null}
 
-          <Text className="text-sm font-medium text-[#5F5F5F] mb-1.5">
+          <Text className="font-inter-medium text-sm text-[#1C1C1C] mb-1.5">
             {requireReason
               ? "Motivo de la cancelación (obligatorio)"
               : "Motivo de la cancelación (opcional)"}
@@ -88,20 +89,28 @@ export function CancelBookingModal({
               setReason(val);
               if (localError) setLocalError("");
             }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             editable={!isLoading}
             placeholder="Ej: Surgió un imprevisto con la propiedad o el huésped..."
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#7A7A7A"
             multiline
             numberOfLines={4}
             textAlignVertical="top"
-            className="min-h-[96px] p-3 rounded-xl border border-[#6B8E23]/20 text-[#5F5F5F] bg-[#FAFAFA] mb-5"
+            className={`min-h-[96px] p-3.5 rounded-xl border font-inter text-[#1C1C1C] bg-[#FAFAFA] mb-5 ${
+              displayError
+                ? "border-[#DC2626]"
+                : isFocused
+                  ? "border-[#B8860B] bg-white"
+                  : "border-[#DCDCDC]"
+            }`}
           />
 
           <View className="flex-col gap-3">
             <TouchableOpacity
               onPress={handleConfirm}
               disabled={isLoading || (requireReason && !reason.trim())}
-              className={`bg-red-600 rounded-xl py-3 items-center justify-center flex-row ${
+              className={`min-h-[48px] bg-[#DC2626] rounded-xl py-3 items-center justify-center flex-row ${
                 isLoading || (requireReason && !reason.trim())
                   ? "opacity-60"
                   : ""
@@ -110,7 +119,7 @@ export function CancelBookingModal({
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" className="mr-2" />
               ) : null}
-              <Text className="text-white font-semibold">
+              <Text className="font-inter-medium text-white text-base">
                 {isLoading ? "Cancelando..." : "Confirmar cancelación"}
               </Text>
             </TouchableOpacity>
@@ -118,9 +127,11 @@ export function CancelBookingModal({
             <TouchableOpacity
               onPress={handleClose}
               disabled={isLoading}
-              className="border-2 border-[#6B8E23] rounded-xl py-3 items-center"
+              className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl py-3 items-center justify-center"
             >
-              <Text className="text-[#6B8E23] font-semibold">Volver</Text>
+              <Text className="font-inter-medium text-[#B8860B] text-base">
+                Volver
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

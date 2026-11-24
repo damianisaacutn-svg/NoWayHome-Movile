@@ -1,19 +1,9 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import {
-  DollarSign,
-  Heart,
-  MapPin,
-  RefreshCw,
-  Search,
-  Star,
-  Users,
-  X,
-} from "lucide-react-native";
+import { DollarSign, RefreshCw, Search, Users, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Image,
   RefreshControl,
   ScrollView,
   Text,
@@ -36,9 +26,11 @@ import {
   resolveUserRole,
 } from "@/utils/sessionRole";
 import { AlertMessage } from "../../components/AlertMessage";
+import { BottomTabBar } from "../../components/BottomTabBar";
 import { EmptyState } from "../../components/EmptyState";
 import { HeaderInquilino } from "../../components/headerInquilino";
 import { LoadingState } from "../../components/LoadingState";
+import { PropertyCard } from "../../components/PropertyCard";
 import { PLACEHOLDER_PROPERTY_IMAGE } from "./constants";
 
 function buildEndpointUrl(path: string): string {
@@ -118,6 +110,9 @@ export function ExplorarPage() {
     );
   });
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [focusedField, setFocusedField] = useState<
+    "filtro" | "precio" | "huespedes" | null
+  >(null);
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {
@@ -456,7 +451,7 @@ export function ExplorarPage() {
   if (isLoading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white"
+        className="flex-1 bg-[#FAFAFA]"
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
@@ -464,18 +459,22 @@ export function ExplorarPage() {
         <View className="flex-1 bg-[#FAFAFA] justify-center items-center">
           <LoadingState message="Buscando alojamientos disponibles..." />
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-[#FAFAFA]"
+      edges={["top", "left", "right"]}
+    >
       <StatusBar style="dark" />
       <HeaderInquilino />
 
       <ScrollView
         className="flex-1 bg-[#FAFAFA] px-4 py-6"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={
@@ -484,59 +483,86 @@ export function ExplorarPage() {
             onRefresh={() => {
               void cargarDatos(true);
             }}
-            colors={["#6B8E23"]}
-            tintColor="#6B8E23"
+            colors={["#B8860B"]}
+            tintColor="#B8860B"
           />
         }
       >
         {/* Header Section & Buscador */}
         <View className="mb-6">
-          <Text className="font-poppins text-3xl font-bold tracking-tight text-[#5F5F5F] mb-1.5">
+          <Text className="font-poppins text-3xl font-semibold tracking-tight text-[#1C1C1C] mb-1.5">
             Encuentra tu próximo destino
           </Text>
-          <Text className="text-sm text-[#5F5F5F]/75 mb-5">
+          <Text className="font-inter text-sm text-[#595959] mb-5">
             Explora las mejores propiedades verificadas en No Way Home
           </Text>
 
-          <View className="bg-white rounded-2xl p-3.5 border border-[#6B8E23]/15 shadow-sm gap-3">
-            <View className="flex-row items-center rounded-xl border border-[#6B8E23]/20 bg-[#FAFAFA] px-3.5 h-12">
-              <Search size={18} color="#A67C52" />
+          <View className="bg-white rounded-2xl p-4 border border-[#DCDCDC] shadow-sm gap-3">
+            <View
+              className={`flex-row items-center rounded-xl border px-3.5 h-12 ${
+                focusedField === "filtro"
+                  ? "border-[#B8860B] bg-white"
+                  : "border-[#DCDCDC] bg-[#FAFAFA]"
+              }`}
+            >
+              <Search size={18} color="#B87333" />
               <TextInput
                 placeholder="Buscar por ciudad, destino o nombre..."
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 ml-2.5 text-sm text-[#5F5F5F]"
+                placeholderTextColor="#7A7A7A"
+                className="flex-1 ml-2.5 font-inter-medium text-sm text-[#1C1C1C]"
                 value={filtro}
                 onChangeText={setFiltro}
+                onFocus={() => setFocusedField("filtro")}
+                onBlur={() => setFocusedField(null)}
               />
               {filtro.length > 0 ? (
-                <TouchableOpacity onPress={() => setFiltro("")} className="p-1">
-                  <X size={16} color="#5F5F5F" />
+                <TouchableOpacity
+                  onPress={() => setFiltro("")}
+                  className="h-9 w-9 items-center justify-center"
+                >
+                  <X size={16} color="#1C1C1C" />
                 </TouchableOpacity>
               ) : null}
             </View>
 
             <View className="flex-row gap-3">
-              <View className="flex-1 flex-row items-center rounded-xl border border-[#6B8E23]/20 bg-[#FAFAFA] px-3 h-11">
-                <DollarSign size={16} color="#A67C52" />
+              <View
+                className={`flex-1 flex-row items-center rounded-xl border px-3 h-12 ${
+                  focusedField === "precio"
+                    ? "border-[#B8860B] bg-white"
+                    : "border-[#DCDCDC] bg-[#FAFAFA]"
+                }`}
+              >
+                <DollarSign size={16} color="#B87333" />
                 <TextInput
                   placeholder="Costo máx."
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#7A7A7A"
                   keyboardType="numeric"
-                  className="flex-1 ml-1.5 text-xs text-[#5F5F5F]"
+                  className="flex-1 ml-1.5 font-inter-medium text-xs text-[#1C1C1C]"
                   value={precioMax}
                   onChangeText={setPrecioMax}
+                  onFocus={() => setFocusedField("precio")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
 
-              <View className="flex-1 flex-row items-center rounded-xl border border-[#6B8E23]/20 bg-[#FAFAFA] px-3 h-11">
-                <Users size={16} color="#A67C52" />
+              <View
+                className={`flex-1 flex-row items-center rounded-xl border px-3 h-12 ${
+                  focusedField === "huespedes"
+                    ? "border-[#B8860B] bg-white"
+                    : "border-[#DCDCDC] bg-[#FAFAFA]"
+                }`}
+              >
+                <Users size={16} color="#B87333" />
                 <TextInput
                   placeholder="Huéspedes"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#7A7A7A"
                   keyboardType="numeric"
-                  className="flex-1 ml-1.5 text-xs text-[#5F5F5F]"
+                  className="flex-1 ml-1.5 font-inter-medium text-xs text-[#1C1C1C]"
                   value={huespedes}
                   onChangeText={setHuespedes}
+                  onFocus={() => setFocusedField("huespedes")}
+                  onBlur={() => setFocusedField(null)}
                 />
               </View>
             </View>
@@ -544,10 +570,10 @@ export function ExplorarPage() {
             {hayFiltros ? (
               <TouchableOpacity
                 onPress={limpiarFiltros}
-                className="flex-row items-center justify-center py-2 rounded-xl bg-[#F2E8CF]/60"
+                className="min-h-[44px] flex-row items-center justify-center py-2 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]"
               >
-                <X size={14} color="#A67C52" />
-                <Text className="ml-1.5 text-xs font-semibold text-[#A67C52]">
+                <X size={14} color="#B87333" />
+                <Text className="ml-1.5 font-inter-medium text-xs text-[#B87333]">
                   Limpiar filtros
                 </Text>
               </TouchableOpacity>
@@ -564,10 +590,10 @@ export function ExplorarPage() {
             />
             <TouchableOpacity
               onPress={() => void cargarDatos(false)}
-              className="mt-3 self-start flex-row items-center bg-[#6B8E23] px-4 py-2.5 rounded-xl"
+              className="mt-3 min-h-[48px] self-start flex-row items-center bg-[#B8860B] px-5 py-3 rounded-xl"
             >
               <RefreshCw size={15} color="#FFFFFF" />
-              <Text className="ml-2 text-xs font-semibold text-white">
+              <Text className="ml-2 font-inter-medium text-sm text-white">
                 Reintentar
               </Text>
             </TouchableOpacity>
@@ -582,9 +608,9 @@ export function ExplorarPage() {
               hayFiltros ? (
                 <TouchableOpacity
                   onPress={limpiarFiltros}
-                  className="bg-[#6B8E23] px-5 py-2.5 rounded-xl"
+                  className="min-h-[48px] justify-center bg-[#B8860B] px-5 py-3 rounded-xl"
                 >
-                  <Text className="text-white font-semibold text-sm">
+                  <Text className="font-inter-medium text-white text-sm">
                     Ver todas las propiedades
                   </Text>
                 </TouchableOpacity>
@@ -626,106 +652,36 @@ export function ExplorarPage() {
                 const isFavorito = favoritos.has(idKey);
 
                 return (
-                  <TouchableOpacity
+                  <PropertyCard
                     key={idKey}
-                    activeOpacity={0.92}
-                    className="flex-col overflow-hidden rounded-3xl bg-white shadow-sm border border-[#6B8E23]/10"
+                    title={nombre}
+                    location={ubicacion}
+                    imageUri={imagen}
+                    priceFormatted={formatPrice(precio)}
+                    priceSuffix={esMensual ? "/ mes" : "/ noche"}
+                    rating={
+                      prop.calificacion_promedio ?? prop.calificacion ?? "4.9"
+                    }
+                    capacity={prop.capacidad}
+                    actionLabel="Ver detalles"
+                    isFavorite={isFavorito}
+                    onToggleFavorite={() => void handleToggleFavorito(rawId)}
+                    onImageError={() =>
+                      setFailedImages((prev) => ({
+                        ...prev,
+                        [idKey]: true,
+                      }))
+                    }
                     onPress={() => handleVerDetalles(rawId)}
-                  >
-                    {/* Imagen de la Tarjeta */}
-                    <View className="relative w-full h-56 bg-[#F2E8CF]/30">
-                      <Image
-                        source={{ uri: imagen }}
-                        className="h-full w-full"
-                        resizeMode="cover"
-                        onError={() =>
-                          setFailedImages((prev) => ({
-                            ...prev,
-                            [idKey]: true,
-                          }))
-                        }
-                      />
-
-                      <TouchableOpacity
-                        onPress={() => void handleToggleFavorito(rawId)}
-                        className="absolute right-4 top-4 rounded-full bg-white/95 p-2.5 shadow-sm"
-                      >
-                        <Heart
-                          size={20}
-                          color={isFavorito ? "#ef4444" : "#5F5F5F"}
-                          fill={isFavorito ? "#ef4444" : "transparent"}
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Contenido de la Tarjeta */}
-                    <View className="p-5 flex-1 justify-between">
-                      <View>
-                        <View className="mb-2 flex-row items-start justify-between">
-                          <Text
-                            className="flex-1 font-poppins text-lg font-semibold leading-tight text-[#5F5F5F]"
-                            numberOfLines={2}
-                          >
-                            {nombre}
-                          </Text>
-                          <View className="ml-2 flex-row items-center rounded-lg bg-[#F2E8CF] px-2.5 py-1">
-                            <Star size={14} color="#6B8E23" fill="#6B8E23" />
-                            <Text className="ml-1 text-xs font-semibold text-[#5F5F5F]">
-                              {prop.calificacion_promedio ??
-                                prop.calificacion ??
-                                "4.9"}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View className="mb-4 flex-row items-center">
-                          <MapPin size={16} color="#A67C52" />
-                          <Text
-                            className="ml-1.5 flex-1 text-sm font-medium text-[#5F5F5F]/75"
-                            numberOfLines={1}
-                          >
-                            {ubicacion}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View className="mt-1 border-t border-[#F2E8CF] pt-4">
-                        <View className="flex-row items-baseline justify-between mb-4">
-                          <View className="flex-row items-baseline">
-                            <Text className="font-poppins text-2xl font-bold text-[#6B8E23]">
-                              {formatPrice(precio)}
-                            </Text>
-                            <Text className="ml-1 text-sm font-medium text-[#5F5F5F]/60">
-                              {esMensual ? "/ mes" : "/ noche"}
-                            </Text>
-                          </View>
-                          {prop.capacidad ? (
-                            <View className="flex-row items-center gap-1 bg-[#F2E8CF]/50 px-2.5 py-1 rounded-full">
-                              <Users size={12} color="#A67C52" />
-                              <Text className="text-xs font-medium text-[#5F5F5F]">
-                                {prop.capacidad} huésp.
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-
-                        <TouchableOpacity
-                          className="h-12 w-full rounded-xl bg-[#6B8E23] items-center justify-center"
-                          onPress={() => handleVerDetalles(rawId)}
-                        >
-                          <Text className="text-white font-semibold text-base">
-                            Ver detalles
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                  />
                 );
               })}
             </View>
           )
         )}
       </ScrollView>
+
+      <BottomTabBar />
     </SafeAreaView>
   );
 }

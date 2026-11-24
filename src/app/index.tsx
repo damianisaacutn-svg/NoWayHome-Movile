@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   DollarSign,
@@ -10,14 +10,19 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  Star,
   Users,
   X,
 } from "lucide-react-native";
-import { useCallback, useRef, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type ReactElement,
+} from "react";
 import {
   ActivityIndicator,
-  Image,
   Modal,
   RefreshControl,
   ScrollView,
@@ -28,14 +33,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { API_BASE_URL } from "@/config/api";
-
-// ============================================================================
-// [UBICACIÓN 1 - IMPORTACIÓN DEL HEADER]
-// Aquí importamos el componente `Header` desde `src/components/header.tsx`
-// usando el alias `@/components/header` para reutilizarlo en cualquier pantalla.
-// ============================================================================
+import { BottomTabBar } from "@/components/BottomTabBar";
 import { Header } from "@/components/header";
+import { PropertyCard } from "@/components/PropertyCard";
+import { API_BASE_URL } from "@/config/api";
 import {
   propiedadController,
   type PropiedadImagenItem,
@@ -150,17 +151,25 @@ function resolvePropertyImage(prop: PropiedadItem): string {
     return trimmed;
   }
 
-  // Resuelve rutas relativas servidas desde el backend (ej. /uploads/foto.jpg)
   const normalizedPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
 export default function HomePage(): ReactElement {
   const router = useRouter();
+  const params = useLocalSearchParams<{ ver?: string | string[] }>();
+  const verParam = Array.isArray(params.ver) ? params.ver[0] : params.ver;
+
+  const scrollViewRef = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [catalogOffsetY, setCatalogOffsetY] = useState<number>(0);
+
   const [propiedades, setPropiedades] = useState<PropiedadItem[]>([]);
   const [destino, setDestino] = useState<string>("");
   const [precioMax, setPrecioMax] = useState<string>("");
   const [huespedes, setHuespedes] = useState<string>("");
+  const [focusedField, setFocusedField] = useState<
+    "destino" | "precio" | "huespedes" | null
+  >(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +179,12 @@ export default function HomePage(): ReactElement {
   const [infoModalType, setInfoModalType] = useState<
     "anfitrion" | "aventura" | "privacidad" | "terminos" | null
   >(null);
+
+  useEffect(() => {
+    if (verParam === "explorar" && catalogOffsetY > 0) {
+      scrollViewRef.current?.scrollTo({ y: catalogOffsetY, animated: true });
+    }
+  }, [verParam, catalogOffsetY]);
 
   const cargarCatalogo = useCallback(async (): Promise<PropiedadItem[]> => {
     const result = await propiedadController.cargarPropiedades();
@@ -242,10 +257,8 @@ export default function HomePage(): ReactElement {
     }
   };
 
-  // Filtrado tridimensional en tiempo real en base a los 3 campos
   const propiedadesFiltradas = propiedades.filter(
     (prop: PropiedadItem): boolean => {
-      // 1. Filtro por texto (Destino / Título)
       const termino = destino.toLowerCase().trim();
       const matchTexto = ((): boolean => {
         if (!termino) return true;
@@ -257,7 +270,6 @@ export default function HomePage(): ReactElement {
         );
       })();
 
-      // 2. Filtro por Costo deseado (Precio Máximo)
       const maxPrice = parseFloat(precioMax);
       const matchPrecio = ((): boolean => {
         if (isNaN(maxPrice) || maxPrice <= 0) return true;
@@ -265,7 +277,6 @@ export default function HomePage(): ReactElement {
         return precioProp <= maxPrice;
       })();
 
-      // 3. Filtro por Número de Huéspedes
       const numHuespedes = parseInt(huespedes, 10);
       const matchHuespedes = ((): boolean => {
         if (isNaN(numHuespedes) || numHuespedes <= 0) return true;
@@ -315,53 +326,38 @@ export default function HomePage(): ReactElement {
   if (isLoading) {
     return (
       <SafeAreaView
-        className="flex-1 bg-white"
+        className="flex-1 bg-[#FAFAFA]"
         edges={["top", "left", "right"]}
       >
         <StatusBar style="dark" />
-
-        {/* ==================================================================
-            [UBICACIÓN 2 - HEADER EN EL ESTADO DE CARGA (isLoading)]
-            Cómo se colocó:
-            - Dentro de `<SafeAreaView className="flex-1 bg-white">` para que
-              respete el notch/barra de estado en blanco igual que el Header.
-            - Justo arriba del contenedor del spinner de carga para mantener la
-              barra superior visible mientras se consultan las propiedades.
-            ================================================================== */}
         <Header />
 
         <View className="flex-1 bg-[#FAFAFA] items-center justify-center px-6">
-          <View className="w-16 h-16 rounded-2xl bg-cream items-center justify-center mb-4">
-            <ActivityIndicator size="large" color="#6B8E23" />
+          <View className="w-16 h-16 rounded-2xl bg-[#F5F2EC] border border-[#DCDCDC] items-center justify-center mb-4">
+            <ActivityIndicator size="large" color="#B8860B" />
           </View>
-          <Text className="text-dark font-bold text-lg text-center">
+          <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] text-center">
             No Way Home
           </Text>
-          <Text className="mt-1 text-dark/70 font-medium text-sm text-center">
+          <Text className="mt-1 font-inter text-sm text-[#595959] text-center">
             Buscando alojamientos disponibles...
           </Text>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView
+      className="flex-1 bg-[#FAFAFA]"
+      edges={["top", "left", "right"]}
+    >
       <StatusBar style="dark" />
-
-      {/* ====================================================================
-          [UBICACIÓN 3 - HEADER EN LA VISTA PRINCIPAL DE INDEX]
-          Dónde está:
-          - Dentro de `<SafeAreaView className="flex-1 bg-white">` y ANTES
-            (por fuera) del `<ScrollView>`.
-          Cómo funciona así:
-          - Al estar fuera del `<ScrollView>`, el `<Header />` permanece fijo
-            en la parte superior mientras el usuario hace scroll al catálogo,
-            y su menú desplegable móvil se abre limpiamente sin recortarse.
-          ==================================================================== */}
       <Header />
 
       <ScrollView
+        ref={scrollViewRef}
         className="flex-1 bg-[#FAFAFA]"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -371,74 +367,87 @@ export default function HomePage(): ReactElement {
             onRefresh={() => {
               void handleRecargar(true);
             }}
-            colors={["#6B8E23"]}
-            tintColor="#6B8E23"
+            colors={["#B8860B"]}
+            tintColor="#B8860B"
           />
         }
       >
-        {/* Hero Section */}
-        <View className="bg-cream pt-7 pb-8 px-5 rounded-b-[32px]">
-          {/* Hero Copy */}
+        {/* Hero Section - Calma Urbana */}
+        <View className="bg-[#F5F2EC] pt-7 pb-8 px-5 rounded-b-[28px] border-b border-[#DCDCDC]">
           <View className="items-center mb-6">
-            <View className="bg-brand/15 px-3 py-1 rounded-full mb-3">
-              <Text className="text-brand text-xs font-bold uppercase tracking-wider">
+            <View className="bg-[#B8860B]/12 border border-[#B8860B]/25 px-3.5 py-1 rounded-full mb-3">
+              <Text className="font-inter-semibold text-[#B8860B] text-xs uppercase tracking-wider">
                 Alojamientos verificados
               </Text>
             </View>
-            <Text className="font-bold text-3xl text-dark mb-2.5 text-center leading-9">
+            <Text className="font-poppins font-semibold text-3xl text-[#1C1C1C] mb-2.5 text-center leading-9">
               Encuentra tu Hospedaje Perfecto
             </Text>
-            <Text className="text-dark/80 text-sm text-center px-2 leading-5 mb-4">
-              Explora miles de propiedades únicas en los mejores destinos
+            <Text className="font-inter text-[#595959] text-sm text-center px-2 leading-5 mb-4">
+              Explora propiedades únicas en los mejores destinos con calma y confianza
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleHostCta}
-              className="bg-white/90 px-4 py-2 rounded-full border border-brand/20"
+              className="min-h-[44px] justify-center bg-white px-4 py-2 rounded-full border border-[#DCDCDC]"
             >
-              <Text className="text-brown text-xs font-bold">
+              <Text className="font-inter-medium text-[#B87333] text-xs">
                 ¿Eres anfitrión? Publica tu espacio
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Search Card */}
-          <View className="bg-white rounded-3xl p-4 border border-brand/15 shadow-sm">
+          <View className="bg-white rounded-2xl p-4 border border-[#DCDCDC] shadow-sm">
             {/* Campo 1: Destino o Título */}
-            <View className="flex-row items-center bg-[#FAFAFA] rounded-2xl px-3.5 py-2.5 border border-[#EBE5D8] mb-3">
-              <View className="w-9 h-9 rounded-xl bg-cream/70 items-center justify-center mr-3">
-                <MapPin color="#A67C52" size={18} />
+            <View
+              className={`flex-row items-center rounded-xl px-3.5 py-2 border mb-3 ${
+                focusedField === "destino"
+                  ? "border-[#B8860B] bg-white"
+                  : "border-[#DCDCDC] bg-[#FAFAFA]"
+              }`}
+            >
+              <View className="w-9 h-9 rounded-xl bg-[#F5F2EC] items-center justify-center mr-3">
+                <MapPin color="#B87333" size={18} />
               </View>
               <View className="flex-1">
-                <Text className="text-[11px] font-bold uppercase tracking-wider text-dark/60">
+                <Text className="font-inter-medium text-[11px] uppercase tracking-wider text-[#595959]">
                   Destino o Título
                 </Text>
                 <TextInput
                   placeholder="¿Dónde vas o qué buscas?"
                   value={destino}
                   onChangeText={setDestino}
-                  placeholderTextColor="#5F5F5F70"
-                  className="text-dark text-sm font-medium py-0.5"
+                  onFocus={() => setFocusedField("destino")}
+                  onBlur={() => setFocusedField(null)}
+                  placeholderTextColor="#7A7A7A"
+                  className="font-inter-medium text-[#1C1C1C] text-sm py-1"
                 />
               </View>
               {destino.length > 0 ? (
                 <TouchableOpacity
                   onPress={() => setDestino("")}
-                  className="p-1"
+                  className="h-9 w-9 items-center justify-center"
                 >
-                  <X color="#5F5F5F" size={16} />
+                  <X color="#1C1C1C" size={16} />
                 </TouchableOpacity>
               ) : null}
             </View>
 
-            {/* Fila 2: Costo Máximo y Huéspedes lado a lado en móvil */}
+            {/* Fila 2: Costo Máximo y Huéspedes */}
             <View className="flex-row gap-3">
-              <View className="flex-1 flex-row items-center bg-[#FAFAFA] rounded-2xl px-3 py-2.5 border border-[#EBE5D8]">
-                <View className="w-8 h-8 rounded-xl bg-cream/70 items-center justify-center mr-2.5">
-                  <DollarSign color="#A67C52" size={16} />
+              <View
+                className={`flex-1 flex-row items-center rounded-xl px-3 py-2 border ${
+                  focusedField === "precio"
+                    ? "border-[#B8860B] bg-white"
+                    : "border-[#DCDCDC] bg-[#FAFAFA]"
+                }`}
+              >
+                <View className="w-8 h-8 rounded-lg bg-[#F5F2EC] items-center justify-center mr-2.5">
+                  <DollarSign color="#B87333" size={16} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[10px] font-bold uppercase tracking-wider text-dark/60">
+                  <Text className="font-inter-medium text-[10px] uppercase tracking-wider text-[#595959]">
                     Costo Máx.
                   </Text>
                   <TextInput
@@ -446,18 +455,26 @@ export default function HomePage(): ReactElement {
                     placeholder="Ej. 2500"
                     value={precioMax}
                     onChangeText={setPrecioMax}
-                    placeholderTextColor="#5F5F5F70"
-                    className="text-dark text-sm font-medium py-0.5"
+                    onFocus={() => setFocusedField("precio")}
+                    onBlur={() => setFocusedField(null)}
+                    placeholderTextColor="#7A7A7A"
+                    className="font-inter-medium text-[#1C1C1C] text-sm py-1"
                   />
                 </View>
               </View>
 
-              <View className="flex-1 flex-row items-center bg-[#FAFAFA] rounded-2xl px-3 py-2.5 border border-[#EBE5D8]">
-                <View className="w-8 h-8 rounded-xl bg-cream/70 items-center justify-center mr-2.5">
-                  <Users color="#A67C52" size={16} />
+              <View
+                className={`flex-1 flex-row items-center rounded-xl px-3 py-2 border ${
+                  focusedField === "huespedes"
+                    ? "border-[#B8860B] bg-white"
+                    : "border-[#DCDCDC] bg-[#FAFAFA]"
+                }`}
+              >
+                <View className="w-8 h-8 rounded-lg bg-[#F5F2EC] items-center justify-center mr-2.5">
+                  <Users color="#B87333" size={16} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-[10px] font-bold uppercase tracking-wider text-dark/60">
+                  <Text className="font-inter-medium text-[10px] uppercase tracking-wider text-[#595959]">
                     Huéspedes
                   </Text>
                   <TextInput
@@ -465,8 +482,10 @@ export default function HomePage(): ReactElement {
                     placeholder="¿Cuántos?"
                     value={huespedes}
                     onChangeText={setHuespedes}
-                    placeholderTextColor="#5F5F5F70"
-                    className="text-dark text-sm font-medium py-0.5"
+                    onFocus={() => setFocusedField("huespedes")}
+                    onBlur={() => setFocusedField(null)}
+                    placeholderTextColor="#7A7A7A"
+                    className="font-inter-medium text-[#1C1C1C] text-sm py-1"
                   />
                 </View>
               </View>
@@ -476,10 +495,10 @@ export default function HomePage(): ReactElement {
               <TouchableOpacity
                 onPress={limpiarFiltros}
                 activeOpacity={0.75}
-                className="mt-3 py-2 rounded-xl bg-cream/60 flex-row items-center justify-center"
+                className="mt-3 min-h-[44px] py-2 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] flex-row items-center justify-center"
               >
-                <X color="#A67C52" size={14} />
-                <Text className="text-brown font-bold text-xs ml-1.5">
+                <X color="#B87333" size={15} />
+                <Text className="font-inter-medium text-[#B87333] text-xs ml-1.5">
                   Limpiar filtros de búsqueda
                 </Text>
               </TouchableOpacity>
@@ -488,19 +507,22 @@ export default function HomePage(): ReactElement {
         </View>
 
         {/* Catálogo de Propiedades */}
-        <View className="pt-8 pb-6 px-5">
+        <View
+          onLayout={(e) => setCatalogOffsetY(e.nativeEvent.layout.y)}
+          className="pt-8 pb-6 px-5"
+        >
           <View className="flex-row items-end justify-between mb-6">
             <View className="flex-1 mr-3">
-              <Text className="font-bold text-2xl text-dark mb-1">
+              <Text className="font-poppins font-semibold text-2xl text-[#1C1C1C] mb-1">
                 Propiedades Disponibles
               </Text>
-              <Text className="text-dark/70 text-sm">
+              <Text className="font-inter text-[#595959] text-sm">
                 Las mejores opciones seleccionadas para ti
               </Text>
             </View>
             {!error ? (
-              <View className="bg-cream px-3 py-1.5 rounded-full">
-                <Text className="text-brown font-bold text-xs">
+              <View className="bg-[#F5F2EC] border border-[#DCDCDC] px-3 py-1.5 rounded-full">
+                <Text className="font-inter-semibold text-[#B87333] text-xs">
                   {propiedadesFiltradas.length}{" "}
                   {propiedadesFiltradas.length === 1 ? "opción" : "opciones"}
                 </Text>
@@ -510,10 +532,10 @@ export default function HomePage(): ReactElement {
 
           {error ? (
             <View className="bg-red-50 border border-red-200 p-5 rounded-2xl mb-6">
-              <Text className="text-red-800 font-bold text-base mb-1">
+              <Text className="font-poppins text-red-800 font-semibold text-base mb-1">
                 No pudimos cargar el catálogo
               </Text>
-              <Text className="text-red-600 text-sm leading-5 mb-4">
+              <Text className="font-inter text-red-700 text-sm leading-5 mb-4">
                 {error}
               </Text>
               <TouchableOpacity
@@ -521,10 +543,10 @@ export default function HomePage(): ReactElement {
                 onPress={() => {
                   void handleRecargar(false);
                 }}
-                className="bg-brand self-start px-4 py-2.5 rounded-xl flex-row items-center"
+                className="min-h-[48px] bg-[#B8860B] self-start px-5 py-3 rounded-xl flex-row items-center"
               >
-                <RefreshCw color="#FFFFFF" size={15} />
-                <Text className="text-white font-bold text-xs ml-2">
+                <RefreshCw color="#FFFFFF" size={16} />
+                <Text className="font-inter-medium text-white text-sm ml-2">
                   Reintentar conexión
                 </Text>
               </TouchableOpacity>
@@ -532,23 +554,22 @@ export default function HomePage(): ReactElement {
           ) : null}
 
           {!error && propiedadesFiltradas.length === 0 ? (
-            <View className="bg-white p-8 rounded-3xl items-center border border-brand/15 mt-2 shadow-sm">
-              <View className="w-16 h-16 rounded-full bg-cream/70 items-center justify-center mb-4">
-                <Search color="#A67C52" size={28} />
+            <View className="bg-white p-8 rounded-2xl items-center border border-[#DCDCDC] mt-2 shadow-sm">
+              <View className="w-16 h-16 rounded-full bg-[#F5F2EC] border border-[#DCDCDC] items-center justify-center mb-4">
+                <Search color="#B87333" size={28} />
               </View>
-              <Text className="font-bold text-lg text-dark mb-2 text-center">
+              <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] mb-2 text-center">
                 No encontramos resultados
               </Text>
-              <Text className="text-dark/70 text-sm text-center leading-5 mb-5">
-                Intenta modificando los valores del buscador o los filtros
-                aplicados.
+              <Text className="font-inter text-[#595959] text-sm text-center leading-5 mb-5">
+                Intenta modificando los valores del buscador o los filtros aplicados.
               </Text>
               {hayFiltrosActivos ? (
                 <TouchableOpacity
                   onPress={limpiarFiltros}
-                  className="bg-brand px-5 py-2.5 rounded-xl"
+                  className="min-h-[48px] bg-[#B8860B] px-5 py-3 rounded-xl justify-center"
                 >
-                  <Text className="text-white font-bold text-sm">
+                  <Text className="font-inter-medium text-white text-sm">
                     Ver todas las propiedades
                   </Text>
                 </TouchableOpacity>
@@ -575,93 +596,35 @@ export default function HomePage(): ReactElement {
                       prop.calificacion ??
                       prop.rating ??
                       "4.9";
+                    const esMensual =
+                      String(
+                        (prop as Record<string, any>).tipo_precio || "",
+                      ).toLowerCase() === "mensual";
 
                     return (
-                      <TouchableOpacity
+                      <PropertyCard
                         key={id}
-                        activeOpacity={0.9}
+                        title={nombre}
+                        location={ubicacion}
+                        imageUri={imagen}
+                        priceFormatted={formatPrice(precio)}
+                        priceSuffix={esMensual ? "/ mes" : "/ noche"}
+                        rating={calificacion}
+                        capacity={capacidad}
+                        actionLabel="Ver información"
+                        onImageError={() => {
+                          setFailedImageIds((prev) => ({
+                            ...prev,
+                            [id]: true,
+                          }));
+                        }}
                         onPress={() =>
                           router.push({
                             pathname: "/inquilino/detallesPropiedadPage" as any,
                             params: { id, from: "index", soloInfo: "true" },
                           })
                         }
-                        className="bg-white rounded-3xl overflow-hidden border border-brand/15 shadow-sm"
-                      >
-                        {/* Contenedor de imagen con altura fija para renderizado nativo confiable */}
-                        <View className="h-52 w-full bg-cream/40 relative">
-                          <Image
-                            source={{ uri: imagen }}
-                            className="w-full h-full"
-                            resizeMode="cover"
-                            onError={() => {
-                              setFailedImageIds((prev) => ({
-                                ...prev,
-                                [id]: true,
-                              }));
-                            }}
-                          />
-
-                          {/* Badge de calificación flotante */}
-                          <View className="absolute top-3 right-3 flex-row items-center bg-white/95 px-2.5 py-1 rounded-full shadow-sm">
-                            <Star color="#6B8E23" fill="#6B8E23" size={13} />
-                            <Text className="text-xs font-bold text-dark ml-1">
-                              {calificacion}
-                            </Text>
-                          </View>
-
-                          {/* Badge de capacidad si existe */}
-                          {capacidad > 0 ? (
-                            <View className="absolute bottom-3 left-3 flex-row items-center bg-black/60 px-2.5 py-1 rounded-full">
-                              <Users color="#FFFFFF" size={12} />
-                              <Text className="text-[11px] font-medium text-white ml-1">
-                                Hasta {capacidad} huéspedes
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-
-                        <View className="p-5">
-                          <Text
-                            className="font-bold text-lg text-dark leading-6 mb-1.5"
-                            numberOfLines={2}
-                          >
-                            {nombre}
-                          </Text>
-
-                          <View className="flex-row items-center mb-4">
-                            <MapPin color="#A67C52" size={15} />
-                            <Text
-                              className="text-dark/70 ml-1.5 text-sm flex-1"
-                              numberOfLines={1}
-                            >
-                              {ubicacion}
-                            </Text>
-                          </View>
-
-                          <View className="border-t border-cream pt-3.5 flex-row items-center justify-between">
-                            <View className="flex-row items-baseline">
-                              <Text className="font-bold text-xl text-brand">
-                                {formatPrice(precio)}
-                              </Text>
-                              <Text className="text-xs font-medium text-dark/60 ml-1">
-                                {String(
-                                  (prop as Record<string, any>).tipo_precio ||
-                                    "",
-                                ).toLowerCase() === "mensual"
-                                  ? "/ mes"
-                                  : "/ noche"}
-                              </Text>
-                            </View>
-
-                            <View className="bg-cream/70 px-3.5 py-1.5 rounded-xl">
-                              <Text className="text-brown font-bold text-xs">
-                                Ver información
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
+                      />
                     );
                   },
                 )}
@@ -671,66 +634,78 @@ export default function HomePage(): ReactElement {
         </View>
 
         {/* CTA Section Informativa */}
-        <View className="mx-5 my-4 bg-brand rounded-3xl py-8 px-6 items-center shadow-sm">
-          <Text className="font-bold text-2xl text-white text-center mb-2.5">
+        <View className="mx-5 my-4 bg-[#B8860B] rounded-2xl py-8 px-6 items-center shadow-sm">
+          <Text className="font-poppins font-semibold text-2xl text-white text-center mb-2.5">
             ¿Listo para tu próxima aventura?
           </Text>
-          <Text className="text-white/90 text-sm text-center mb-6 leading-5">
+          <Text className="font-inter text-white/90 text-sm text-center mb-6 leading-5">
             Conoce cómo miles de viajeros encuentran y consultan información de
             alojamientos verificados en nuestra plataforma
           </Text>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleNavigateRegister}
-            className="bg-white w-full py-3.5 rounded-2xl items-center justify-center shadow-sm"
+            className="min-h-[48px] bg-white w-full py-3.5 rounded-xl items-center justify-center shadow-sm"
           >
-            <Text className="text-brand font-bold text-base">
+            <Text className="font-inter-medium text-[#B8860B] text-base">
               Ver información de la plataforma
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer Móvil */}
-        <View className="bg-white mt-4 pt-8 pb-10 px-6 border-t border-brand/10 items-center">
+        <View className="bg-white mt-4 pt-8 pb-10 px-6 border-t border-[#DCDCDC] items-center">
           <View className="flex-row items-center mb-3">
-            <View className="w-7 h-7 rounded-lg bg-brand items-center justify-center mr-2">
-              <Home color="#FFFFFF" size={14} />
+            <View className="w-8 h-8 rounded-xl bg-[#B8860B] items-center justify-center mr-2">
+              <Home color="#FFFFFF" size={16} />
             </View>
-            <Text className="font-bold text-xl text-brand">No Way Home</Text>
+            <Text className="font-poppins font-semibold text-xl text-[#1C1C1C]">
+              No Way Home
+            </Text>
           </View>
 
-          <Text className="text-dark/70 text-sm text-center mb-6 leading-5">
+          <Text className="font-inter text-[#595959] text-sm text-center mb-6 leading-5">
             Tu plataforma de confianza para encontrar los mejores alojamientos
             temporales. Siéntete en casa, sin importar a dónde vayas.
           </Text>
 
-          <View className="flex-row items-center bg-[#FAFAFA] px-4 py-2.5 rounded-full border border-cream mb-6">
-            <Mail color="#A67C52" size={16} />
-            <Text className="text-dark/80 text-xs font-medium ml-2">
+          <View className="flex-row items-center bg-[#FAFAFA] px-4 py-2.5 rounded-full border border-[#DCDCDC] mb-6">
+            <Mail color="#B87333" size={16} />
+            <Text className="font-inter-medium text-[#1C1C1C] text-xs ml-2">
               nowayhomeadmin@gmail.com
             </Text>
           </View>
 
-          <View className="border-t border-brand/10 w-full pt-6 items-center">
-            <Text className="text-dark/60 text-xs mb-4 text-center">
+          <View className="border-t border-[#DCDCDC] w-full pt-6 items-center">
+            <Text className="font-inter text-[#595959] text-xs mb-4 text-center">
               © {new Date().getFullYear()} No Way Home. Todos los derechos
               reservados.
             </Text>
             <View className="flex-row gap-6">
-              <TouchableOpacity onPress={() => handleOpenPdf("Privacidad")}>
-                <Text className="text-brown font-medium text-xs">
+              <TouchableOpacity
+                onPress={() => handleOpenPdf("Privacidad")}
+                className="min-h-[44px] justify-center px-2"
+              >
+                <Text className="font-inter-medium text-[#B87333] text-xs">
                   Privacidad
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleOpenPdf("Términos")}>
-                <Text className="text-brown font-medium text-xs">Términos</Text>
+              <TouchableOpacity
+                onPress={() => handleOpenPdf("Términos")}
+                className="min-h-[44px] justify-center px-2"
+              >
+                <Text className="font-inter-medium text-[#B87333] text-xs">
+                  Términos
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* Modal estrictamente informativo para los accesos de Index */}
+      <BottomTabBar />
+
+      {/* Modal informativo */}
       <Modal
         visible={infoModalType !== null}
         transparent
@@ -738,20 +713,20 @@ export default function HomePage(): ReactElement {
         onRequestClose={() => setInfoModalType(null)}
       >
         <View className="flex-1 bg-black/50 justify-center items-center px-5">
-          <View className="w-full max-w-md bg-white rounded-3xl p-6 border border-brand/15 shadow-xl max-h-[82%]">
-            <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-cream">
+          <View className="w-full max-w-md bg-white rounded-2xl p-6 border border-[#DCDCDC] shadow-xl max-h-[82%]">
+            <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-[#DCDCDC]">
               <View className="flex-row items-center flex-1 pr-3">
-                <View className="w-10 h-10 rounded-2xl bg-cream items-center justify-center mr-3">
+                <View className="w-10 h-10 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC] items-center justify-center mr-3">
                   {infoModalType === "privacidad" ||
                   infoModalType === "terminos" ? (
-                    <FileText color="#6B8E23" size={20} />
+                    <FileText color="#B87333" size={20} />
                   ) : infoModalType === "anfitrion" ? (
-                    <ShieldCheck color="#6B8E23" size={20} />
+                    <ShieldCheck color="#B8860B" size={20} />
                   ) : (
-                    <Info color="#6B8E23" size={20} />
+                    <Info color="#B8860B" size={20} />
                   )}
                 </View>
-                <Text className="font-bold text-lg text-dark flex-1">
+                <Text className="font-poppins font-semibold text-lg text-[#1C1C1C] flex-1">
                   {infoModalType === "anfitrion"
                     ? "Información para Anfitriones"
                     : infoModalType === "aventura"
@@ -763,9 +738,9 @@ export default function HomePage(): ReactElement {
               </View>
               <TouchableOpacity
                 onPress={() => setInfoModalType(null)}
-                className="p-1.5 rounded-full bg-cream/60"
+                className="h-10 w-10 items-center justify-center rounded-full bg-[#FAFAFA] border border-[#DCDCDC]"
               >
-                <X color="#5F5F5F" size={18} />
+                <X color="#1C1C1C" size={18} />
               </TouchableOpacity>
             </View>
 
@@ -775,17 +750,17 @@ export default function HomePage(): ReactElement {
             >
               {infoModalType === "anfitrion" ? (
                 <View className="gap-3">
-                  <Text className="text-dark/85 text-sm leading-5">
+                  <Text className="font-inter text-[#1C1C1C] text-sm leading-5">
                     En No Way Home los propietarios y anfitriones pueden dar a
                     conocer sus espacios verificados con fotografías reales,
                     ubicación en mapa y tarifas transparentes por noche o por
                     mes.
                   </Text>
-                  <View className="bg-cream/60 p-4 rounded-2xl border border-brand/10">
-                    <Text className="font-bold text-dark text-sm mb-1.5">
+                  <View className="bg-[#F5F2EC] p-4 rounded-xl border border-[#DCDCDC]">
+                    <Text className="font-poppins font-semibold text-[#1C1C1C] text-sm mb-1.5">
                       Beneficios informativos para anfitriones:
                     </Text>
-                    <Text className="text-dark/80 text-xs leading-5">
+                    <Text className="font-inter text-[#595959] text-xs leading-5">
                       • Publicación detallada con galería de entre 5 y 20
                       fotografías.{"\n"}• Geolocalización interactiva para que
                       los interesados ubiquen la zona fácilmente.{"\n"}•
@@ -794,7 +769,7 @@ export default function HomePage(): ReactElement {
                       pagos verificados y emisión de constancia digital.
                     </Text>
                   </View>
-                  <Text className="text-dark/70 text-xs leading-5">
+                  <Text className="font-inter text-[#595959] text-xs leading-5">
                     Nota: Esta pantalla de inicio es únicamente de carácter
                     informativo. Para gestionar o publicar alojamientos, accede
                     con tu cuenta de anfitrión desde el menú superior.
@@ -802,15 +777,15 @@ export default function HomePage(): ReactElement {
                 </View>
               ) : infoModalType === "aventura" ? (
                 <View className="gap-3">
-                  <Text className="text-dark/85 text-sm leading-5">
+                  <Text className="font-inter text-[#1C1C1C] text-sm leading-5">
                     No Way Home conecta a viajeros con alojamientos temporales
                     verificados de manera transparente y segura.
                   </Text>
-                  <View className="bg-cream/60 p-4 rounded-2xl border border-brand/10">
-                    <Text className="font-bold text-dark text-sm mb-1.5">
+                  <View className="bg-[#F5F2EC] p-4 rounded-xl border border-[#DCDCDC]">
+                    <Text className="font-poppins font-semibold text-[#1C1C1C] text-sm mb-1.5">
                       Guía informativa del servicio:
                     </Text>
-                    <Text className="text-dark/80 text-xs leading-5">
+                    <Text className="font-inter text-[#595959] text-xs leading-5">
                       1. Consulta en este catálogo público las características,
                       ubicación, capacidad y precios de cada propiedad.{"\n"}2.
                       Las reservaciones únicamente pueden realizarse iniciando
@@ -825,11 +800,11 @@ export default function HomePage(): ReactElement {
                 </View>
               ) : infoModalType === "privacidad" ? (
                 <View className="gap-3">
-                  <Text className="text-dark/85 text-sm leading-5">
+                  <Text className="font-inter text-[#1C1C1C] text-sm leading-5">
                     En No Way Home protegemos tus datos personales conforme a la
                     normativa aplicable de protección de datos.
                   </Text>
-                  <Text className="text-dark/80 text-xs leading-5">
+                  <Text className="font-inter text-[#595959] text-xs leading-5">
                     • Recopilación de datos: únicamente solicitamos nombre,
                     correo electrónico y teléfono necesarios para identificar a
                     huéspedes y anfitriones.{"\n"}• Uso de la información: los
@@ -843,11 +818,11 @@ export default function HomePage(): ReactElement {
                 </View>
               ) : (
                 <View className="gap-3">
-                  <Text className="text-dark/85 text-sm leading-5">
+                  <Text className="font-inter text-[#1C1C1C] text-sm leading-5">
                     El uso de la plataforma No Way Home implica la aceptación de
                     las siguientes condiciones informativas y de servicio:
                   </Text>
-                  <Text className="text-dark/80 text-xs leading-5">
+                  <Text className="font-inter text-[#595959] text-xs leading-5">
                     • Catálogo de inicio: la página principal muestra
                     información general de los alojamientos disponibles únicamente
                     para consulta informativa.{"\n"}• Proceso de reserva: toda
@@ -866,9 +841,11 @@ export default function HomePage(): ReactElement {
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => setInfoModalType(null)}
-              className="bg-brand py-3.5 rounded-2xl items-center justify-center"
+              className="min-h-[48px] bg-[#B8860B] py-3.5 rounded-xl items-center justify-center"
             >
-              <Text className="text-white font-bold text-sm">Entendido</Text>
+              <Text className="font-inter-medium text-white text-sm">
+                Entendido
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

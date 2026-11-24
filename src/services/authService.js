@@ -345,6 +345,60 @@ class AuthService {
     this._notifyListeners();
   }
 
+  switchRole(targetRole) {
+    if (!this._session?.isAuthenticated) {
+      return {
+        success: false,
+        message: "Debes iniciar sesión para cambiar de rol.",
+      };
+    }
+
+    const normalizedTarget = normalizeRoleString(targetRole);
+    if (normalizedTarget !== "inquilino" && normalizedTarget !== "arrendatario") {
+      return {
+        success: false,
+        message: "Rol no permitido en la aplicación móvil.",
+      };
+    }
+
+    const currentUser = isPlainObject(this._session.user)
+      ? { ...this._session.user }
+      : {};
+
+    const updatedUser = normalizeSessionPayloadUser(
+      { role: normalizedTarget },
+      { ...currentUser, role: normalizedTarget, rol: normalizedTarget },
+      normalizedTarget,
+    );
+
+    this._session = {
+      ...this._session,
+      user: updatedUser,
+      role: normalizedTarget,
+    };
+
+    const storage = getStorageAdapter();
+    if (storage) {
+      try {
+        storage.setItem(SESSION_STORAGE_KEY, JSON.stringify(this._session));
+        if (updatedUser) {
+          storage.setItem("user", JSON.stringify(updatedUser));
+        }
+        storage.setItem("role", normalizedTarget);
+      } catch {
+        // Ignorar límites de almacenamiento
+      }
+    }
+
+    this._notifyListeners();
+
+    return {
+      success: true,
+      role: normalizedTarget,
+      user: updatedUser,
+    };
+  }
+
   // Utilidades para guardar/leer claves auxiliares (ej. pending_2fa, last_registered_user)
   getStorageItem(key) {
     try {

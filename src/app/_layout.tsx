@@ -1,13 +1,27 @@
 import "../global.css";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from "@expo-google-fonts/inter";
+import {
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from "@expo-google-fonts/poppins";
+import { useFonts } from "expo-font";
 import { Stack, usePathname, useRouter } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { AppState, BackHandler, Platform } from "react-native";
+
 import { authService } from "@/services/authService";
 import {
   configurarListenerRespuestaNotificacion,
   solicitarPermisosNotificaciones,
 } from "@/services/localNotificationService";
 import { sincronizarNotificacionesDeUsuario } from "@/services/notificationSyncService";
+
+void SplashScreen.preventAutoHideAsync().catch(() => null);
 
 function isProtectedPath(pathname: string): boolean {
   const clean = (pathname || "").toLowerCase();
@@ -23,8 +37,21 @@ function isProtectedPath(pathname: string): boolean {
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const [fontsLoaded, fontError] = useFonts({
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
   const [session, setSession] = useState(() => authService.getSession());
   const isAuthenticated = Boolean(session?.isAuthenticated);
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      void SplashScreen.hideAsync().catch(() => null);
+    }
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
     const unsubscribe = authService.subscribe((nextSession) => {

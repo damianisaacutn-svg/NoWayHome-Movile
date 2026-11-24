@@ -1,10 +1,6 @@
-// src/components/ConfirmActionModal.tsx
+import { AlertCircle, CheckCircle2, HelpCircle } from "lucide-react-native";
 import React from "react";
-import { Modal, View, Text, TouchableOpacity } from "react-native";
-
-// ---------------------------------------------------------------------------
-// TIPOS E INTERFACES
-// ---------------------------------------------------------------------------
+import { Modal, Text, TouchableOpacity, View } from "react-native";
 
 export type ConfirmModalType = "confirm" | "success" | "error" | string;
 
@@ -29,10 +25,6 @@ export interface ConfirmActionModalProps {
   disableConfirm?: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// COMPONENTE PRINCIPAL
-// ---------------------------------------------------------------------------
-
 export function ConfirmActionModal({
   open,
   type = "confirm",
@@ -53,31 +45,30 @@ export function ConfirmActionModal({
   const resolvedTitle =
     title ||
     (type === "success"
-      ? "Accion completada"
+      ? "Acción completada"
       : type === "error"
         ? "Error"
-        : "Confirmar accion");
+        : "Confirmar acción");
   const resolvedConfirmLabel =
     confirmLabel || (isConfirm ? "Confirmar" : "Entendido");
   const resolvedConfirmVariant =
     confirmVariant || (type === "error" ? "adminDanger" : "adminPrimary");
 
-  // Mapeo de variantes visuales a clases de NativeWind
   const getVariantButtonClass = (variant: ButtonVariant): string => {
     switch (variant) {
       case "adminDanger":
-        return "bg-red-600 active:bg-red-700";
+        return "bg-[#DC2626] active:bg-[#B91C1C]";
       case "adminSecondary":
-        return "border border-gray-300 bg-white active:bg-gray-100";
+        return "border-[1.5px] border-[#B8860B] bg-transparent active:bg-[#B8860B]/10";
       case "adminPrimary":
       default:
-        return "bg-[#6B8E23] active:bg-[#5a7a1e]";
+        return "bg-[#B8860B] active:bg-[#9A6F09]";
     }
   };
 
   const getVariantTextClass = (variant: ButtonVariant): string => {
     if (variant === "adminSecondary") {
-      return "text-[#5F5F5F]";
+      return "text-[#B8860B]";
     }
     return "text-white";
   };
@@ -89,17 +80,34 @@ export function ConfirmActionModal({
       animationType="fade"
       onRequestClose={onCancel || onConfirm}
     >
-      <View className="flex-1 items-center justify-center bg-black/40 px-4">
-        <View className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-          {/* Título */}
-          <Text className="text-lg font-semibold text-[#333333]">
-            {resolvedTitle}
-          </Text>
+      <View className="flex-1 items-center justify-center bg-black/50 px-4">
+        <View className="w-full max-w-md rounded-2xl border border-[#DCDCDC] bg-white p-6 shadow-xl">
+          <View className="flex-row items-center gap-3">
+            <View
+              className={`h-10 w-10 items-center justify-center rounded-full ${
+                type === "error" || resolvedConfirmVariant === "adminDanger"
+                  ? "bg-red-50"
+                  : type === "success"
+                    ? "bg-[#B8860B]/15"
+                    : "bg-[#F5F2EC]"
+              }`}
+            >
+              {type === "error" || resolvedConfirmVariant === "adminDanger" ? (
+                <AlertCircle size={20} color="#DC2626" />
+              ) : type === "success" ? (
+                <CheckCircle2 size={20} color="#B8860B" />
+              ) : (
+                <HelpCircle size={20} color="#B87333" />
+              )}
+            </View>
+            <Text className="flex-1 font-poppins text-lg font-semibold text-[#1C1C1C]">
+              {resolvedTitle}
+            </Text>
+          </View>
 
-          {/* Descripción */}
           <View className="mt-3">
             {typeof description === "string" ? (
-              <Text className="text-sm leading-5 text-[#555555]">
+              <Text className="font-inter text-sm leading-5 text-[#595959]">
                 {description}
               </Text>
             ) : (
@@ -107,17 +115,16 @@ export function ConfirmActionModal({
             )}
           </View>
 
-          {/* Botones de Acción */}
           <View className="mt-6 flex-row justify-end gap-3">
             {isConfirm && (
               <TouchableOpacity
                 onPress={onCancel}
                 disabled={disableCancel}
-                className={`min-w-[90px] items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 active:bg-gray-50 ${
+                className={`min-h-[48px] min-w-[96px] items-center justify-center rounded-xl border-[1.5px] border-[#B8860B] bg-transparent px-4 active:bg-[#B8860B]/10 ${
                   disableCancel ? "opacity-50" : ""
                 }`}
               >
-                <Text className="text-sm font-medium text-[#5F5F5F]">
+                <Text className="font-inter-medium text-sm text-[#B8860B]">
                   {cancelLabel}
                 </Text>
               </TouchableOpacity>
@@ -126,12 +133,12 @@ export function ConfirmActionModal({
             <TouchableOpacity
               onPress={onConfirm}
               disabled={disableConfirm}
-              className={`min-w-[100px] items-center justify-center rounded-xl px-4 py-2.5 ${getVariantButtonClass(
+              className={`min-h-[48px] min-w-[108px] items-center justify-center rounded-xl px-4 ${getVariantButtonClass(
                 resolvedConfirmVariant,
               )} ${confirmButtonClassName} ${disableConfirm ? "opacity-50" : ""}`}
             >
               <Text
-                className={`text-sm font-semibold ${getVariantTextClass(
+                className={`font-inter-medium text-sm ${getVariantTextClass(
                   resolvedConfirmVariant,
                 )}`}
               >

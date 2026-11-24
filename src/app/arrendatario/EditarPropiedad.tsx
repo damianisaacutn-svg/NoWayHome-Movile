@@ -34,6 +34,7 @@ import {
   hasValidId,
   resolveUserRole,
 } from '@/utils/sessionRole';
+import { BottomTabBar } from '../../components/BottomTabBar';
 import { ConfirmActionModal } from '../../components/ConfirmActionModal';
 import { HeaderArrendatario } from '../../components/headerArrendatario';
 import { PropertyLocationMap } from '../../components/locacionPropiedadMap';
@@ -791,7 +792,12 @@ export function EditarPropiedad() {
 
   const renderError = (field: string) => {
     if (!errors[field]) return null;
-    return <Text className="mt-2 text-sm text-red-700">{errors[field]}</Text>;
+    return (
+      <View className="mt-1.5 flex-row items-center gap-1.5">
+        <AlertCircle size={14} color="#DC2626" />
+        <Text className="flex-1 font-inter text-xs text-red-700">{errors[field]}</Text>
+      </View>
+    );
   };
 
   const priceLabel = form.tipo_precio === 'mensual' ? 'Precio mensual' : 'Precio por noche';
@@ -808,33 +814,34 @@ export function EditarPropiedad() {
         <StatusBar style="dark" />
         <HeaderArrendatario />
         <View className="flex-1 px-6 justify-center items-center">
-          <View className="w-full max-w-md rounded-2xl bg-white border border-[#6B8E23]/15 p-6 items-center shadow-sm">
+          <View className="w-full max-w-md rounded-2xl bg-white border border-[#DCDCDC] p-6 items-center shadow-sm">
             <AlertCircle size={36} color="#DC2626" />
-            <Text className="mt-3 text-lg font-semibold text-[#5F5F5F] text-center">
+            <Text className="mt-3 font-poppins text-lg font-semibold text-[#1C1C1C] text-center">
               No se pudo validar tu cuenta de arrendatario
             </Text>
-            <Text className="mt-2 text-sm text-[#5F5F5F]/80 text-center leading-5">
+            <Text className="mt-2 font-inter text-sm text-[#595959] text-center leading-5">
               Vuelve a tu perfil o inicia sesión nuevamente para editar propiedades.
             </Text>
             <View className="mt-5 w-full flex-col gap-3">
               <TouchableOpacity
                 onPress={() => router.replace('/arrendatario/profileArrendatario' as any)}
-                className="w-full rounded-xl bg-[#6B8E23] py-3 items-center"
+                className="min-h-[48px] justify-center w-full rounded-xl bg-[#B8860B] py-3 items-center"
               >
-                <Text className="text-white font-semibold">Volver al perfil</Text>
+                <Text className="font-inter-medium text-white">Volver al perfil</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   authService.logout();
                   router.replace('/loginPage' as any);
                 }}
-                className="w-full rounded-xl border-2 border-[#6B8E23] py-3 items-center"
+                className="min-h-[48px] justify-center w-full rounded-xl border-[1.5px] border-[#B8860B] py-3 items-center"
               >
-                <Text className="text-[#6B8E23] font-semibold">Volver a iniciar sesión</Text>
+                <Text className="font-inter-medium text-[#B8860B]">Volver a iniciar sesión</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -845,21 +852,22 @@ export function EditarPropiedad() {
         <StatusBar style="dark" />
         <HeaderArrendatario />
         <View className="flex-1 px-4 py-8 justify-center items-center">
-          <View className="w-full max-w-md rounded-2xl bg-[#F2E8CF] p-6 items-center">
-            <Text className="text-lg font-semibold text-[#5F5F5F] mb-2 text-center">
+          <View className="w-full max-w-md rounded-2xl border border-[#DCDCDC] bg-[#F5F2EC] p-6 items-center">
+            <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] mb-2 text-center">
               Propiedad no especificada
             </Text>
-            <Text className="text-sm text-[#5F5F5F]/80 mb-5 text-center">
+            <Text className="font-inter text-sm text-[#595959] mb-5 text-center">
               Selecciona una propiedad desde tu listado para poder editarla.
             </Text>
             <TouchableOpacity
               onPress={() => router.replace('/arrendatario/MisPropiedades' as any)}
-              className="rounded-xl bg-[#6B8E23] px-5 py-3"
+              className="min-h-[48px] justify-center rounded-xl bg-[#B8860B] px-5 py-3"
             >
-              <Text className="text-white font-semibold">Ir a mis propiedades</Text>
+              <Text className="font-inter-medium text-white">Ir a mis propiedades</Text>
             </TouchableOpacity>
           </View>
         </View>
+        <BottomTabBar />
       </SafeAreaView>
     );
   }
@@ -868,56 +876,56 @@ export function EditarPropiedad() {
     <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={['top']}>
       <StatusBar style="dark" />
       <HeaderArrendatario />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} className="flex-1 px-4 py-8">
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} className="flex-1 px-4 py-8" keyboardShouldPersistTaps="handled">
         <View className="w-full max-w-5xl mx-auto">
           {/* Volver a mis propiedades */}
           <TouchableOpacity
             onPress={() => router.push('/arrendatario/MisPropiedades' as any)}
-            className="mb-5 flex-row items-center self-start rounded-xl px-3 py-2 bg-transparent active:bg-[#6B8E23]/10"
+            className="mb-5 min-h-[44px] flex-row items-center self-start rounded-xl px-3.5 py-2 bg-white border border-[#DCDCDC]"
           >
-            <ArrowLeft size={16} color="#6B8E23" className="mr-2" />
-            <Text className="text-[#6B8E23] font-medium ml-2">Volver a mis propiedades</Text>
+            <ArrowLeft size={16} color="#B87333" />
+            <Text className="font-inter-medium text-[#1C1C1C] ml-2">Volver a mis propiedades</Text>
           </TouchableOpacity>
 
           {/* Tarjeta Principal */}
-          <View className="bg-[#F2E8CF] rounded-2xl p-6">
-            <View className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-              <Pencil size={24} color="#6B8E23" />
+          <View className="bg-white border border-[#DCDCDC] rounded-2xl p-6 shadow-sm">
+            <View className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]">
+              <Pencil size={24} color="#B8860B" />
             </View>
-            <Text className="text-2xl font-semibold text-[#5F5F5F]">
+            <Text className="font-poppins text-2xl font-semibold text-[#1C1C1C]">
               Editar propiedad
             </Text>
-            <Text className="mt-3 text-sm text-[#5F5F5F]/80">
+            <Text className="mt-2 font-inter text-sm text-[#595959]">
               Actualiza la información de tu alojamiento publicado en NoWayHome.
             </Text>
 
             {isLoading ? (
               <View className="mt-8 flex-row items-center">
-                <ActivityIndicator color="#6B8E23" size="small" />
-                <Text className="ml-3 text-[#5F5F5F]">Cargando propiedad...</Text>
+                <ActivityIndicator color="#B8860B" size="small" />
+                <Text className="ml-3 font-inter text-[#1C1C1C]">Cargando propiedad...</Text>
               </View>
             ) : (
               <View className="mt-8">
                 {/* SECCIÓN: Información básica */}
                 <View className="mb-8">
-                  <Text className="text-xl font-semibold text-[#5F5F5F] mb-4">
+                  <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">
                     Información básica
                   </Text>
                   <View className="space-y-4">
                     <View className="mb-4">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Título</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Título</Text>
                       <TextInput
                         value={form.titulo}
                         onChangeText={(val) => handleFieldChange('titulo', val)}
                         placeholder="Título de la propiedad"
-                        placeholderTextColor="#5F5F5F60"
-                        className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                       />
                       {renderError('titulo')}
                     </View>
 
                     <View className="mb-4">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Descripción</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Descripción</Text>
                       <TextInput
                         multiline
                         numberOfLines={4}
@@ -925,8 +933,8 @@ export function EditarPropiedad() {
                         value={form.descripcion}
                         onChangeText={(val) => handleFieldChange('descripcion', val)}
                         placeholder="Descripción completa"
-                        placeholderTextColor="#5F5F5F60"
-                        className="min-h-[128px] bg-white border border-[#6B8E23]/20 text-[#5F5F5F] p-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="min-h-[128px] bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter text-[#1C1C1C] p-4 rounded-xl"
                       />
                       {renderError('descripcion')}
                     </View>
@@ -935,42 +943,42 @@ export function EditarPropiedad() {
 
                 {/* SECCIÓN: Ubicación */}
                 <View className="mb-8">
-                  <Text className="text-xl font-semibold text-[#5F5F5F] mb-4">
+                  <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">
                     Ubicación
                   </Text>
                   <View className="space-y-4">
                     <View className="mb-4">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Dirección</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Dirección</Text>
                       <TextInput
                         value={form.direccion}
                         onChangeText={(val) => handleFieldChange('direccion', val)}
                         placeholder="Dirección completa"
-                        placeholderTextColor="#5F5F5F60"
-                        className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                       />
                       {renderError('direccion')}
                     </View>
 
                     <View className="flex-row gap-3 mb-4">
                       <View className="flex-1">
-                        <Text className="text-[#5F5F5F] font-medium mb-1">Ciudad</Text>
+                        <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Ciudad</Text>
                         <TextInput
                           value={form.ciudad}
                           onChangeText={(val) => handleFieldChange('ciudad', val)}
                           placeholder="Ciudad"
-                          placeholderTextColor="#5F5F5F60"
-                          className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                          placeholderTextColor="#7A7A7A"
+                          className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                         />
                         {renderError('ciudad')}
                       </View>
                       <View className="flex-1">
-                        <Text className="text-[#5F5F5F] font-medium mb-1">País</Text>
+                        <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">País</Text>
                         <TextInput
                           value={form.pais}
                           onChangeText={(val) => handleFieldChange('pais', val)}
                           placeholder="País"
-                          placeholderTextColor="#5F5F5F60"
-                          className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                          placeholderTextColor="#7A7A7A"
+                          className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                         />
                         {renderError('pais')}
                       </View>
@@ -980,8 +988,8 @@ export function EditarPropiedad() {
                       <TouchableOpacity
                         onPress={handleSearchLocation}
                         disabled={geocodeState.isLoading}
-                        className={`flex-row items-center justify-center rounded-xl bg-[#6B8E23] h-12 px-4 ${
-                          geocodeState.isLoading ? 'opacity-60' : 'active:bg-[#5a7a1e]'
+                        className={`min-h-[48px] flex-row items-center justify-center rounded-xl bg-[#B8860B] px-4 ${
+                          geocodeState.isLoading ? 'opacity-60' : 'active:bg-[#9A6F09]'
                         }`}
                       >
                         {geocodeState.isLoading ? (
@@ -989,7 +997,7 @@ export function EditarPropiedad() {
                         ) : (
                           <>
                             <Search size={16} color="#fff" />
-                            <Text className="ml-2 font-medium text-white">Buscar ubicación</Text>
+                            <Text className="ml-2 font-inter-medium text-white">Buscar ubicación</Text>
                           </>
                         )}
                       </TouchableOpacity>
@@ -998,18 +1006,18 @@ export function EditarPropiedad() {
                         <View
                           className={`mt-3 p-3 rounded-xl flex-row items-center border ${
                             geocodeState.type === 'success'
-                              ? 'bg-green-50 border-green-200'
+                              ? 'bg-[#F5F2EC] border-[#B8860B]/35'
                               : 'bg-red-50 border-red-200'
                           }`}
                         >
                           {geocodeState.type === 'success' ? (
-                            <CheckCircle2 size={16} color="#15803d" />
+                            <CheckCircle2 size={16} color="#B8860B" />
                           ) : (
-                            <AlertCircle size={16} color="#b91c1c" />
+                            <AlertCircle size={16} color="#DC2626" />
                           )}
                           <Text
-                            className={`ml-2 text-xs flex-1 ${
-                              geocodeState.type === 'success' ? 'text-green-800' : 'text-red-800'
+                            className={`ml-2 font-inter text-xs flex-1 ${
+                              geocodeState.type === 'success' ? 'text-[#1C1C1C]' : 'text-red-800'
                             }`}
                           >
                             {geocodeState.message}
@@ -1019,7 +1027,7 @@ export function EditarPropiedad() {
                     </View>
 
                     <View className="mb-4">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Mapa de ubicación</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Mapa de ubicación</Text>
                       <PropertyLocationMap
                         editable
                         latitud={form.latitud}
@@ -1032,26 +1040,26 @@ export function EditarPropiedad() {
 
                     <View className="flex-row gap-3">
                       <View className="flex-1">
-                        <Text className="text-[#5F5F5F] font-medium mb-1">Latitud</Text>
+                        <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Latitud</Text>
                         <TextInput
                           keyboardType="numeric"
                           value={form.latitud}
                           onChangeText={(val) => handleFieldChange('latitud', val)}
                           placeholder="0.000000"
-                          placeholderTextColor="#5F5F5F60"
-                          className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                          placeholderTextColor="#7A7A7A"
+                          className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                         />
                         {renderError('latitud')}
                       </View>
                       <View className="flex-1">
-                        <Text className="text-[#5F5F5F] font-medium mb-1">Longitud</Text>
+                        <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Longitud</Text>
                         <TextInput
                           keyboardType="numeric"
                           value={form.longitud}
                           onChangeText={(val) => handleFieldChange('longitud', val)}
                           placeholder="0.000000"
-                          placeholderTextColor="#5F5F5F60"
-                          className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                          placeholderTextColor="#7A7A7A"
+                          className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                         />
                         {renderError('longitud')}
                       </View>
@@ -1061,23 +1069,23 @@ export function EditarPropiedad() {
 
                 {/* SECCIÓN: Capacidad y precio */}
                 <View className="mb-8">
-                  <Text className="text-xl font-semibold text-[#5F5F5F] mb-4">
+                  <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">
                     Capacidad y precio
                   </Text>
 
                   {/* Selector: Tipo de precio */}
                   <View className="mb-4">
-                    <Text className="text-[#5F5F5F] font-medium mb-2">Tipo de precio</Text>
-                    <View className="flex-row bg-white p-1 rounded-xl border border-[#6B8E23]/20">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-2">Tipo de precio</Text>
+                    <View className="flex-row bg-[#FAFAFA] p-1 rounded-xl border border-[#DCDCDC]">
                       <TouchableOpacity
                         onPress={() => handleFieldChange('tipo_precio', 'noche')}
-                        className={`flex-1 py-2.5 rounded-lg items-center ${
-                          form.tipo_precio === 'noche' ? 'bg-[#6B8E23]' : 'bg-transparent'
+                        className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                          form.tipo_precio === 'noche' ? 'bg-[#B8860B]' : 'bg-transparent'
                         }`}
                       >
                         <Text
-                          className={`font-medium ${
-                            form.tipo_precio === 'noche' ? 'text-white' : 'text-[#5F5F5F]'
+                          className={`font-inter-medium ${
+                            form.tipo_precio === 'noche' ? 'text-white' : 'text-[#1C1C1C]'
                           }`}
                         >
                           Por noche
@@ -1085,13 +1093,13 @@ export function EditarPropiedad() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleFieldChange('tipo_precio', 'mensual')}
-                        className={`flex-1 py-2.5 rounded-lg items-center ${
-                          form.tipo_precio === 'mensual' ? 'bg-[#6B8E23]' : 'bg-transparent'
+                        className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                          form.tipo_precio === 'mensual' ? 'bg-[#B8860B]' : 'bg-transparent'
                         }`}
                       >
                         <Text
-                          className={`font-medium ${
-                            form.tipo_precio === 'mensual' ? 'text-white' : 'text-[#5F5F5F]'
+                          className={`font-inter-medium ${
+                            form.tipo_precio === 'mensual' ? 'text-white' : 'text-[#1C1C1C]'
                           }`}
                         >
                           Mensual
@@ -1102,52 +1110,52 @@ export function EditarPropiedad() {
                   </View>
 
                   <View className="mb-4">
-                    <Text className="text-[#5F5F5F] font-medium mb-1">{priceLabel}</Text>
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">{priceLabel}</Text>
                     <TextInput
                       keyboardType="decimal-pad"
                       value={form.precio_por_noche}
                       onChangeText={(val) => handleFieldChange('precio_por_noche', val)}
                       placeholder="0.00"
-                      placeholderTextColor="#5F5F5F60"
-                      className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                      placeholderTextColor="#7A7A7A"
+                      className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                     />
                     {renderError('precio_por_noche')}
                   </View>
 
                   <View className="flex-row gap-3">
                     <View className="flex-1">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Capacidad</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Capacidad</Text>
                       <TextInput
                         keyboardType="number-pad"
                         value={form.capacidad}
                         onChangeText={(val) => handleFieldChange('capacidad', val)}
                         placeholder="Ej. 4"
-                        placeholderTextColor="#5F5F5F60"
-                        className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                       />
                       {renderError('capacidad')}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Habitaciones</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Habitaciones</Text>
                       <TextInput
                         keyboardType="number-pad"
                         value={form.numero_habitaciones}
                         onChangeText={(val) => handleFieldChange('numero_habitaciones', val)}
                         placeholder="Ej. 2"
-                        placeholderTextColor="#5F5F5F60"
-                        className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                       />
                       {renderError('numero_habitaciones')}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-[#5F5F5F] font-medium mb-1">Baños</Text>
+                      <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">Baños</Text>
                       <TextInput
                         keyboardType="number-pad"
                         value={form.numero_banos}
                         onChangeText={(val) => handleFieldChange('numero_banos', val)}
                         placeholder="Ej. 1"
-                        placeholderTextColor="#5F5F5F60"
-                        className="h-12 bg-white border border-[#6B8E23]/20 text-[#5F5F5F] px-4 rounded-xl"
+                        placeholderTextColor="#7A7A7A"
+                        className="h-12 bg-[#FAFAFA] border border-[#DCDCDC] focus:border-[#B8860B] font-inter-medium text-[#1C1C1C] px-4 rounded-xl"
                       />
                       {renderError('numero_banos')}
                     </View>
@@ -1156,20 +1164,20 @@ export function EditarPropiedad() {
 
                 {/* SECCIÓN: Estado */}
                 <View className="mb-8">
-                  <Text className="text-xl font-semibold text-[#5F5F5F] mb-4">Estado</Text>
+                  <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">Estado</Text>
                   <View>
-                    <Text className="text-[#5F5F5F] font-medium mb-2">Estado de publicación</Text>
-                    <View className="flex-row bg-white p-1 rounded-xl border border-[#6B8E23]/20">
+                    <Text className="font-inter-medium text-[#1C1C1C] mb-2">Estado de publicación</Text>
+                    <View className="flex-row bg-[#FAFAFA] p-1 rounded-xl border border-[#DCDCDC]">
                       <TouchableOpacity
                         onPress={() => handleFieldChange('estado', 'activa')}
                         disabled={form.estado === 'suspendida'}
-                        className={`flex-1 py-2.5 rounded-lg items-center ${
-                          form.estado === 'activa' ? 'bg-[#6B8E23]' : 'bg-transparent'
+                        className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                          form.estado === 'activa' ? 'bg-[#B8860B]' : 'bg-transparent'
                         } ${form.estado === 'suspendida' ? 'opacity-50' : ''}`}
                       >
                         <Text
-                          className={`font-medium ${
-                            form.estado === 'activa' ? 'text-white' : 'text-[#5F5F5F]'
+                          className={`font-inter-medium ${
+                            form.estado === 'activa' ? 'text-white' : 'text-[#1C1C1C]'
                           }`}
                         >
                           Activa
@@ -1179,13 +1187,13 @@ export function EditarPropiedad() {
                       <TouchableOpacity
                         onPress={() => handleFieldChange('estado', 'inactiva')}
                         disabled={form.estado === 'suspendida'}
-                        className={`flex-1 py-2.5 rounded-lg items-center ${
-                          form.estado === 'inactiva' ? 'bg-[#6B8E23]' : 'bg-transparent'
+                        className={`min-h-[44px] justify-center flex-1 py-2.5 rounded-lg items-center ${
+                          form.estado === 'inactiva' ? 'bg-[#B8860B]' : 'bg-transparent'
                         } ${form.estado === 'suspendida' ? 'opacity-50' : ''}`}
                       >
                         <Text
-                          className={`font-medium ${
-                            form.estado === 'inactiva' ? 'text-white' : 'text-[#5F5F5F]'
+                          className={`font-inter-medium ${
+                            form.estado === 'inactiva' ? 'text-white' : 'text-[#1C1C1C]'
                           }`}
                         >
                           Inactiva
@@ -1193,8 +1201,8 @@ export function EditarPropiedad() {
                       </TouchableOpacity>
 
                       {form.estado === 'suspendida' && (
-                        <View className="flex-1 py-2.5 rounded-lg items-center bg-[#A67C52]">
-                          <Text className="font-medium text-white">Suspendida</Text>
+                        <View className="flex-1 py-2.5 rounded-lg items-center bg-[#B87333]">
+                          <Text className="font-inter-medium text-white">Suspendida</Text>
                         </View>
                       )}
                     </View>
@@ -1204,7 +1212,7 @@ export function EditarPropiedad() {
 
                 {/* SECCIÓN: Imágenes actuales */}
                 <View className="mb-8">
-                  <Text className="text-xl font-semibold text-[#5F5F5F] mb-4">
+                  <Text className="font-poppins text-xl font-semibold text-[#1C1C1C] mb-4">
                     Imágenes actuales
                   </Text>
                   {currentImages.length > 0 ? (
@@ -1212,7 +1220,7 @@ export function EditarPropiedad() {
                       {currentImages.map((image) => (
                         <View
                           key={String(image.id_imagen || image.url)}
-                          className="relative rounded-xl overflow-hidden bg-white border border-[#6B8E23]/10"
+                          className="relative rounded-xl overflow-hidden bg-white border border-[#DCDCDC]"
                           style={{ width: '48%', minHeight: 180 }}
                         >
                           <Image
@@ -1222,8 +1230,8 @@ export function EditarPropiedad() {
                           />
 
                           {image.es_principal && (
-                            <View className="absolute left-2 top-2 rounded-lg bg-[#6B8E23] px-2 py-1">
-                              <Text className="text-xs font-medium text-white">Principal</Text>
+                            <View className="absolute left-2 top-2 rounded-lg bg-[#B8860B] px-2 py-1">
+                              <Text className="font-inter-medium text-xs text-white">Principal</Text>
                             </View>
                           )}
 
@@ -1231,9 +1239,9 @@ export function EditarPropiedad() {
                             <TouchableOpacity
                               onPress={() => handleReplacementFileChange(image)}
                               disabled={replacingImageId === image.id_imagen}
-                              className="rounded-lg bg-[#F2E8CF]/60 py-1.5 items-center justify-center border border-[#6B8E23]/20"
+                              className="min-h-[38px] rounded-lg bg-[#F5F2EC] py-1.5 items-center justify-center border border-[#DCDCDC]"
                             >
-                              <Text className="text-xs font-medium text-[#6B8E23]">
+                              <Text className="font-inter-medium text-xs text-[#B8860B]">
                                 {replacingImageId === image.id_imagen
                                   ? 'Reemplazando...'
                                   : 'Reemplazar'}
@@ -1243,10 +1251,10 @@ export function EditarPropiedad() {
                             <TouchableOpacity
                               onPress={() => handleDeleteCurrentImage(image)}
                               disabled={deletingImageId === image.id_imagen}
-                              className="flex-row items-center justify-center rounded-lg bg-red-50 py-1.5 border border-red-200"
+                              className="min-h-[38px] flex-row items-center justify-center rounded-lg bg-red-50 py-1.5 border border-red-200"
                             >
-                              <Trash2 size={12} color="#b91c1c" />
-                              <Text className="ml-1 text-xs font-medium text-red-700">
+                              <Trash2 size={12} color="#DC2626" />
+                              <Text className="ml-1 font-inter-medium text-xs text-red-700">
                                 {deletingImageId === image.id_imagen ? 'Eliminando...' : 'Eliminar'}
                               </Text>
                             </TouchableOpacity>
@@ -1255,7 +1263,7 @@ export function EditarPropiedad() {
                       ))}
                     </View>
                   ) : (
-                    <Text className="text-sm text-[#5F5F5F]/75">
+                    <Text className="font-inter text-sm text-[#595959]">
                       Esta propiedad no tiene imágenes.
                     </Text>
                   )}
@@ -1265,19 +1273,19 @@ export function EditarPropiedad() {
                 <View className="mb-8">
                   <View className="flex-row justify-between items-center mb-4">
                     <View className="flex-1 mr-2">
-                      <Text className="text-xl font-semibold text-[#5F5F5F]">
+                      <Text className="font-poppins text-xl font-semibold text-[#1C1C1C]">
                         Agregar nuevas imágenes
                       </Text>
-                      <Text className="mt-1 text-sm text-[#5F5F5F]/75">
+                      <Text className="mt-1 font-inter text-sm text-[#595959]">
                         Puedes tener entre 5 y 20 fotografías por propiedad.
                       </Text>
                     </View>
                     <TouchableOpacity
                       onPress={handleImagesChange}
-                      className="flex-row items-center rounded-xl bg-white px-4 py-3 border-2 border-[#6B8E23] active:bg-[#6B8E23]"
+                      className="min-h-[44px] flex-row items-center rounded-xl bg-white px-4 py-3 border-[1.5px] border-[#B8860B]"
                     >
-                      <ImagePlus size={16} color="#6B8E23" />
-                      <Text className="ml-2 font-medium text-[#6B8E23]">Seleccionar fotos</Text>
+                      <ImagePlus size={16} color="#B8860B" />
+                      <Text className="ml-2 font-inter-medium text-[#B8860B]">Seleccionar fotos</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -1288,7 +1296,7 @@ export function EditarPropiedad() {
                       {newImages.map((image) => (
                         <View
                           key={image.id}
-                          className="relative rounded-xl overflow-hidden bg-white border border-[#6B8E23]/10"
+                          className="relative rounded-xl overflow-hidden bg-white border border-[#DCDCDC]"
                           style={{ width: '48%', height: 130 }}
                         >
                           <Image
@@ -1299,9 +1307,9 @@ export function EditarPropiedad() {
                           <TouchableOpacity
                             onPress={() => removeNewImage(image.id)}
                             accessibilityLabel="Quitar imagen"
-                            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-lg bg-white shadow-sm"
+                            className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-lg bg-white border border-[#DCDCDC] shadow-sm"
                           >
-                            <Trash2 size={16} color="#A67C52" />
+                            <Trash2 size={16} color="#B87333" />
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -1311,8 +1319,9 @@ export function EditarPropiedad() {
 
                 {/* Error global */}
                 {errors.form && (
-                  <View className="rounded-xl bg-red-50 p-4 mb-4 border border-red-200">
-                    <Text className="text-sm text-red-800">{errors.form}</Text>
+                  <View className="rounded-xl bg-red-50 p-4 mb-4 border border-red-200 flex-row items-center gap-2">
+                    <AlertCircle size={16} color="#DC2626" />
+                    <Text className="font-inter text-sm text-red-800 flex-1">{errors.form}</Text>
                   </View>
                 )}
 
@@ -1321,23 +1330,23 @@ export function EditarPropiedad() {
                   {isSuccess && (
                     <TouchableOpacity
                       onPress={() => router.push('/arrendatario/MisPropiedades' as any)}
-                      className="h-12 border-2 border-[#6B8E23] rounded-xl items-center justify-center bg-white"
+                      className="min-h-[48px] border-[1.5px] border-[#B8860B] rounded-xl items-center justify-center bg-white"
                     >
-                      <Text className="text-[#6B8E23] font-semibold">Volver a mis propiedades</Text>
+                      <Text className="font-inter-medium text-[#B8860B]">Volver a mis propiedades</Text>
                     </TouchableOpacity>
                   )}
 
                   <TouchableOpacity
                     onPress={handleSubmit}
                     disabled={isSubmitting}
-                    className={`h-12 bg-[#6B8E23] rounded-xl items-center justify-center ${
-                      isSubmitting ? 'opacity-60' : 'active:bg-[#5a7a1e]'
+                    className={`min-h-[48px] bg-[#B8860B] rounded-xl items-center justify-center ${
+                      isSubmitting ? 'opacity-60' : 'active:bg-[#9A6F09]'
                     }`}
                   >
                     {isSubmitting ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text className="text-white font-semibold text-base">Guardar cambios</Text>
+                      <Text className="font-inter-medium text-white text-base">Guardar cambios</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1346,6 +1355,8 @@ export function EditarPropiedad() {
           </View>
         </View>
       </ScrollView>
+
+      <BottomTabBar />
 
       {/* Modal Confirmación: Eliminar o Reemplazar Imagen */}
       <ConfirmActionModal

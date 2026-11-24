@@ -12,18 +12,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Aquí puedes traer los colores que ya usas en tu web para no perder el estilo
-        primary: "#6B8E23",
-        brand: "#6B8E23",
-        secondary: "#A67C52",
-        brown: "#A67C52",
-        background: "#F2E8CF",
-        cream: "#F2E8CF",
-        textMain: "#5F5F5F",
-        dark: "#5F5F5F",
+        // Guía de estilos "Calma Urbana" (Fase 5 - UI)
+        primary: "#B8860B",
+        brand: "#B8860B",
+        secondary: "#DCDCDC",
+        accent: "#B87333",
+        brown: "#B87333",
+        background: "#FAFAFA",
+        cream: "#F5F2EC",
+        textMain: "#1C1C1C",
+        dark: "#1C1C1C",
+        borderLight: "#DCDCDC",
       },
       fontFamily: {
-        poppins: ["System"],
+        poppins: ["Poppins_600SemiBold", "Poppins", "System"],
+        "poppins-bold": ["Poppins_700Bold", "Poppins", "System"],
+        inter: ["Inter_400Regular", "Inter", "System"],
+        "inter-medium": ["Inter_500Medium", "Inter", "System"],
+        "inter-semibold": ["Inter_600SemiBold", "Inter", "System"],
       },
     },
   },

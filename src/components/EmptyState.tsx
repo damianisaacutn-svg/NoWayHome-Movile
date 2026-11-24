@@ -20,17 +20,17 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <View
-      className={`items-center justify-center rounded-2xl border border-[#6B8E23]/10 bg-white px-6 py-12 ${className}`}
+      className={`items-center justify-center rounded-2xl border border-[#DCDCDC] bg-white px-6 py-12 ${className}`}
       {...props}
     >
-      <View className="mb-4 rounded-full bg-[#F2E8CF]/60 p-4">
-        <Icon size={36} color="#A67C52" />
+      <View className="mb-4 rounded-full bg-[#F5F2EC] p-4 border border-[#DCDCDC]">
+        <Icon size={32} color="#B87333" />
       </View>
-      <Text className="font-poppins text-lg font-semibold text-[#5F5F5F] text-center">
+      <Text className="font-poppins text-lg font-semibold text-[#1C1C1C] text-center">
         {title}
       </Text>
       {message ? (
-        <Text className="mt-2 max-w-md text-center text-sm text-[#5F5F5F]/70 leading-5">
+        <Text className="mt-2 max-w-md text-center font-inter text-sm text-[#595959] leading-5">
           {message}
         </Text>
       ) : null}

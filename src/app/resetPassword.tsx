@@ -215,7 +215,7 @@ export function ResetPassword() {
     isTokenInvalid;
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top", "left", "right"]}>
+    <SafeAreaView className="flex-1 bg-[#FAFAFA]" edges={["top", "left", "right"]}>
       <StatusBar style="dark" />
       {/* Ocultamos el Header cuando se abre desde el enlace del correo para evitar navegación hacia la web */}
       {!isOpenedFromEmailLink ? <Header /> : null}
@@ -227,12 +227,12 @@ export function ResetPassword() {
         className="flex-1 bg-[#FAFAFA]"
       >
         <View className="flex-1 justify-center items-center px-5 py-10">
-          <View className="w-full max-w-md p-6 bg-white border border-[#6B8E23]/15 shadow-sm rounded-3xl">
+          <View className="w-full max-w-md p-6 bg-white border border-[#DCDCDC] shadow-sm rounded-2xl">
             <View className="items-center mb-8">
-              <Text className="font-bold text-3xl text-[#5F5F5F] mb-2 text-center">
+              <Text className="font-poppins font-semibold text-3xl text-[#1C1C1C] mb-2 text-center">
                 Nueva contraseña
               </Text>
-              <Text className="text-[#5F5F5F]/75 text-sm leading-5 text-center">
+              <Text className="font-inter text-[#595959] text-sm leading-5 text-center">
                 {fieldsLocked && (Boolean(success) || alreadyUsedOnRefresh)
                   ? "Proceso completado de forma segura."
                   : "Crea una contraseña nueva (mínimo 8 caracteres) para recuperar el acceso a tu cuenta."}
@@ -243,19 +243,19 @@ export function ResetPassword() {
               <View
                 className={`flex-row items-start p-4 mb-6 rounded-xl border ${
                   success
-                    ? "border-green-300 bg-green-50"
+                    ? "border-[#B8860B]/35 bg-[#F5F2EC]"
                     : "border-red-200 bg-red-50"
                 }`}
               >
                 {success ? (
-                  <CheckCircle2 size={20} color="#16A34A" />
+                  <CheckCircle2 size={20} color="#B8860B" />
                 ) : (
                   <AlertCircle size={20} color="#DC2626" />
                 )}
                 <View className="ml-3 flex-1">
                   <Text
-                    className={`font-bold text-sm mb-1 ${
-                      success ? "text-green-800" : "text-red-800"
+                    className={`font-poppins font-semibold text-sm mb-1 ${
+                      success ? "text-[#1C1C1C]" : "text-red-800"
                     }`}
                   >
                     {success
@@ -265,8 +265,8 @@ export function ResetPassword() {
                       : "Enlace no disponible"}
                   </Text>
                   <Text
-                    className={`text-sm leading-5 ${
-                      success ? "text-green-700" : "text-red-700"
+                    className={`font-inter text-sm leading-5 ${
+                      success ? "text-[#595959]" : "text-red-700"
                     }`}
                   >
                     {success || error}
@@ -278,25 +278,25 @@ export function ResetPassword() {
             {/* Si se abrió manualmente desde la app móvil sin token en URL */}
             {!urlToken ? (
               <View className="mb-4">
-                <Text className="text-[#5F5F5F] font-medium mb-1.5">
+                <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
                   Enlace o código del correo
                 </Text>
                 <View className="relative justify-center">
                   <View className="absolute left-4 z-10">
-                    <KeyRound size={20} color="#A67C52" />
+                    <KeyRound size={20} color="#B87333" />
                   </View>
                   <TextInput
                     autoCapitalize="none"
                     autoCorrect={false}
                     placeholder="Pega el enlace o token recibido"
-                    placeholderTextColor="#5F5F5F55"
+                    placeholderTextColor="#7A7A7A"
                     value={manualTokenInput}
                     onChangeText={setManualTokenInput}
                     editable={!fieldsLocked}
-                    className={`pl-12 pr-4 h-12 border rounded-xl text-[#5F5F5F] ${
+                    className={`pl-12 pr-4 h-12 border rounded-xl font-inter-medium text-[#1C1C1C] ${
                       fieldsLocked
-                        ? "bg-gray-100 border-gray-300 opacity-60"
-                        : "bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23]"
+                        ? "bg-[#DCDCDC]/35 border-[#DCDCDC] opacity-60"
+                        : "bg-[#FAFAFA] border-[#DCDCDC] focus:border-[#B8860B]"
                     }`}
                   />
                 </View>
@@ -304,12 +304,12 @@ export function ResetPassword() {
             ) : null}
 
             <View className="mb-4">
-              <Text className="text-[#5F5F5F] font-medium mb-1.5">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
                 Nueva contraseña
               </Text>
               <View className="relative justify-center">
                 <View className="absolute left-4 z-10">
-                  <Lock size={20} color={fieldsLocked ? "#9CA3AF" : "#A67C52"} />
+                  <Lock size={20} color={fieldsLocked ? "#7A7A7A" : "#B87333"} />
                 </View>
                 <TextInput
                   secureTextEntry={!showNewPassword}
@@ -318,14 +318,14 @@ export function ResetPassword() {
                       ? "Campo bloqueado por seguridad"
                       : "Mínimo 8 caracteres"
                   }
-                  placeholderTextColor="#5F5F5F55"
+                  placeholderTextColor="#7A7A7A"
                   value={newPassword}
                   onChangeText={setNewPassword}
                   editable={!fieldsLocked}
-                  className={`pl-12 pr-12 h-12 border rounded-xl text-[#5F5F5F] ${
+                  className={`pl-12 pr-12 h-12 border rounded-xl font-inter-medium text-[#1C1C1C] ${
                     fieldsLocked
-                      ? "bg-gray-100 border-gray-300 opacity-60"
-                      : "bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23]"
+                      ? "bg-[#DCDCDC]/35 border-[#DCDCDC] opacity-60"
+                      : "bg-[#FAFAFA] border-[#DCDCDC] focus:border-[#B8860B]"
                   }`}
                 />
                 <TouchableOpacity
@@ -336,21 +336,21 @@ export function ResetPassword() {
                   }`}
                 >
                   {showNewPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
             </View>
 
             <View className="mb-6">
-              <Text className="text-[#5F5F5F] font-medium mb-1.5">
+              <Text className="font-inter-medium text-[#1C1C1C] mb-1.5">
                 Confirmar contraseña
               </Text>
               <View className="relative justify-center">
                 <View className="absolute left-4 z-10">
-                  <Lock size={20} color={fieldsLocked ? "#9CA3AF" : "#A67C52"} />
+                  <Lock size={20} color={fieldsLocked ? "#7A7A7A" : "#B87333"} />
                 </View>
                 <TextInput
                   secureTextEntry={!showConfirmPassword}
@@ -359,14 +359,14 @@ export function ResetPassword() {
                       ? "Campo bloqueado por seguridad"
                       : "Confirma tu nueva contraseña"
                   }
-                  placeholderTextColor="#5F5F5F55"
+                  placeholderTextColor="#7A7A7A"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   editable={!fieldsLocked}
-                  className={`pl-12 pr-12 h-12 border rounded-xl text-[#5F5F5F] ${
+                  className={`pl-12 pr-12 h-12 border rounded-xl font-inter-medium text-[#1C1C1C] ${
                     fieldsLocked
-                      ? "bg-gray-100 border-gray-300 opacity-60"
-                      : "bg-[#FAFAFA] border-[#6B8E23]/20 focus:border-[#6B8E23]"
+                      ? "bg-[#DCDCDC]/35 border-[#DCDCDC] opacity-60"
+                      : "bg-[#FAFAFA] border-[#DCDCDC] focus:border-[#B8860B]"
                   }`}
                 />
                 <TouchableOpacity
@@ -377,9 +377,9 @@ export function ResetPassword() {
                   }`}
                 >
                   {showConfirmPassword ? (
-                    <EyeOff size={20} color="#5F5F5F88" />
+                    <EyeOff size={20} color="#595959" />
                   ) : (
-                    <Eye size={20} color="#5F5F5F88" />
+                    <Eye size={20} color="#595959" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -388,7 +388,7 @@ export function ResetPassword() {
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={fieldsLocked}
-              className={`flex-row w-full bg-[#6B8E23] h-12 rounded-xl justify-center items-center mb-3 ${
+              className={`flex-row w-full bg-[#B8860B] active:bg-[#9A6F09] min-h-[48px] rounded-xl justify-center items-center mb-3 ${
                 fieldsLocked ? "opacity-45" : ""
               }`}
             >
@@ -396,7 +396,7 @@ export function ResetPassword() {
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
-                  <Text className="text-white font-medium text-base mr-2">
+                  <Text className="font-inter-medium text-white text-base mr-2">
                     {Boolean(success) || alreadyUsedOnRefresh
                       ? "Contraseña actualizada"
                       : "Actualizar contraseña"}
@@ -408,9 +408,9 @@ export function ResetPassword() {
 
             {/* Si viene del enlace del correo, NO mostrar botón de volver al login web */}
             {isOpenedFromEmailLink ? (
-              <View className="flex-row items-center justify-center mt-2 p-3 rounded-xl bg-[#F2E8CF]/60">
-                <ShieldCheck size={18} color="#6B8E23" />
-                <Text className="text-xs text-[#5F5F5F] ml-2 flex-1">
+              <View className="flex-row items-center justify-center mt-2 p-3 rounded-xl bg-[#F5F2EC] border border-[#DCDCDC]">
+                <ShieldCheck size={18} color="#B8860B" />
+                <Text className="font-inter text-xs text-[#1C1C1C] ml-2 flex-1">
                   Por seguridad, cierra esta ventana cuando termines y regresa a
                   la aplicación móvil NoWayHome.
                 </Text>
@@ -418,10 +418,10 @@ export function ResetPassword() {
             ) : (
               <TouchableOpacity
                 onPress={() => router.replace("/loginPage" as any)}
-                className="flex-row w-full h-11 rounded-xl justify-center items-center bg-transparent"
+                className="flex-row w-full min-h-[48px] rounded-xl justify-center items-center border-[1.5px] border-[#B8860B] bg-transparent"
               >
-                <ArrowLeft size={16} color="#6B8E23" />
-                <Text className="text-[#6B8E23] font-medium ml-2">
+                <ArrowLeft size={16} color="#B8860B" />
+                <Text className="font-inter-medium text-[#B8860B] ml-2">
                   Volver al login móvil
                 </Text>
               </TouchableOpacity>

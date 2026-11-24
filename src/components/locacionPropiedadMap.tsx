@@ -105,12 +105,12 @@ export function PropertyLocationMap({
   if (!editable && !hasCoordinates && !direccion) {
     return (
       <View
-        className={`min-h-[200px] flex-1 items-center justify-center rounded-xl border border-[#6B8E23]/15 bg-[#F2E8CF]/55 p-4 ${className}`}
+        className={`min-h-[200px] flex-1 items-center justify-center rounded-xl border border-[#DCDCDC] bg-[#F5F2EC] p-4 ${className}`}
         style={style}
       >
         <View className="flex-col items-center gap-2">
-          <MapPin size={28} color="#A67C52" />
-          <Text className="font-medium text-[#5F5F5F] text-center">
+          <MapPin size={28} color="#B87333" />
+          <Text className="font-inter-medium text-[#1C1C1C] text-center">
             Ubicación no disponible
           </Text>
         </View>
@@ -120,20 +120,19 @@ export function PropertyLocationMap({
 
   return (
     <View
-      className={`min-h-[200px] rounded-xl overflow-hidden border border-[#6B8E23]/20 bg-[#F2E8CF]/45 p-5 justify-between ${className}`}
+      className={`min-h-[200px] rounded-xl overflow-hidden border border-[#DCDCDC] bg-[#F5F2EC] p-5 justify-between ${className}`}
       style={style}
     >
-      {/* Decorative grid background simulation */}
       <View className="items-center justify-center flex-1 py-2">
-        <View className="h-14 w-14 rounded-full bg-[#6B8E23]/15 items-center justify-center mb-2 border border-[#6B8E23]/30">
-          <View className="h-10 w-10 rounded-full bg-[#6B8E23] items-center justify-center shadow-sm">
+        <View className="h-14 w-14 rounded-full bg-[#B8860B]/15 items-center justify-center mb-2 border border-[#B8860B]/30">
+          <View className="h-10 w-10 rounded-full bg-[#B8860B] items-center justify-center shadow-sm">
             <MapPin size={20} color="#FFFFFF" />
           </View>
         </View>
 
         {direccion ? (
           <Text
-            className="text-sm font-semibold text-[#5F5F5F] text-center px-2 mb-1"
+            className="font-inter-semibold text-sm text-[#1C1C1C] text-center px-2 mb-1"
             numberOfLines={2}
           >
             {direccion}
@@ -141,14 +140,14 @@ export function PropertyLocationMap({
         ) : null}
 
         {hasCoordinates ? (
-          <View className="flex-row items-center gap-1.5 bg-white/90 px-3 py-1 rounded-full border border-[#6B8E23]/15 mt-1">
-            <Navigation size={12} color="#6B8E23" />
-            <Text className="text-xs font-medium text-[#5F5F5F]">
+          <View className="flex-row items-center gap-1.5 bg-white px-3 py-1 rounded-full border border-[#DCDCDC] mt-1">
+            <Navigation size={12} color="#B87333" />
+            <Text className="font-inter-medium text-xs text-[#1C1C1C]">
               {displayLat.toFixed(5)}, {displayLng.toFixed(5)}
             </Text>
           </View>
         ) : (
-          <Text className="text-xs text-[#5F5F5F]/75 text-center mt-1">
+          <Text className="font-inter text-xs text-[#595959] text-center mt-1">
             Mapa interactivo disponible en Google Maps
           </Text>
         )}
@@ -157,27 +156,31 @@ export function PropertyLocationMap({
       {editable ? (
         <View className="flex-row gap-2 mt-3">
           <View className="flex-1">
-            <Text className="text-[11px] text-[#5F5F5F]/80 mb-1">Latitud</Text>
+            <Text className="font-inter-medium text-[11px] text-[#595959] mb-1">
+              Latitud
+            </Text>
             <TextInput
               value={latInput}
               onChangeText={handleLatTextChange}
               onBlur={() => setLatDraft(null)}
               keyboardType="numeric"
               placeholder={String(DEFAULT_CENTER.latitude)}
-              placeholderTextColor="#5F5F5F60"
-              className="h-9 rounded-lg border border-[#6B8E23]/20 bg-white px-2.5 text-xs text-[#5F5F5F]"
+              placeholderTextColor="#7A7A7A"
+              className="h-11 rounded-xl border border-[#DCDCDC] bg-[#FAFAFA] px-3 text-xs text-[#1C1C1C]"
             />
           </View>
           <View className="flex-1">
-            <Text className="text-[11px] text-[#5F5F5F]/80 mb-1">Longitud</Text>
+            <Text className="font-inter-medium text-[11px] text-[#595959] mb-1">
+              Longitud
+            </Text>
             <TextInput
               value={lngInput}
               onChangeText={handleLngTextChange}
               onBlur={() => setLngDraft(null)}
               keyboardType="numeric"
               placeholder={String(DEFAULT_CENTER.longitude)}
-              placeholderTextColor="#5F5F5F60"
-              className="h-9 rounded-lg border border-[#6B8E23]/20 bg-white px-2.5 text-xs text-[#5F5F5F]"
+              placeholderTextColor="#7A7A7A"
+              className="h-11 rounded-xl border border-[#DCDCDC] bg-[#FAFAFA] px-3 text-xs text-[#1C1C1C]"
             />
           </View>
         </View>
@@ -186,10 +189,10 @@ export function PropertyLocationMap({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={handleOpenExternalMap}
-        className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-white py-2.5 px-4 border border-[#6B8E23]/25 shadow-sm"
+        className="mt-3 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl bg-white py-2.5 px-4 border-[1.5px] border-[#B8860B] shadow-sm"
       >
-        <ExternalLink size={15} color="#6B8E23" />
-        <Text className="text-xs font-semibold text-[#6B8E23]">
+        <ExternalLink size={16} color="#B8860B" />
+        <Text className="font-inter-medium text-xs text-[#B8860B]">
           Ver ubicación en Google Maps
         </Text>
       </TouchableOpacity>

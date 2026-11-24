@@ -30,47 +30,49 @@ export type ButtonSize =
   | "adminCompact";
 
 const variantContainerClasses: Record<ButtonVariant, string> = {
-  default: "bg-[#6B8E23] active:bg-[#5a7a1d]",
-  destructive: "bg-red-600 active:bg-red-700",
-  outline: "border border-[#6B8E23]/30 bg-white active:bg-[#F2E8CF]/40",
-  secondary: "bg-[#A67C52] active:bg-[#8f6844]",
-  ghost: "bg-transparent active:bg-[#F2E8CF]/50",
+  // Botón primario: fondo ocre dorado (#B8860B), radio 12 px, altura mínima táctil 48 px
+  default: "bg-[#B8860B] active:bg-[#9A6F09]",
+  destructive: "bg-[#DC2626] active:bg-[#B91C1C]",
+  // Botón secundario: fondo transparente, borde y texto ocre dorado
+  outline: "border-[1.5px] border-[#B8860B] bg-transparent active:bg-[#B8860B]/10",
+  secondary: "border-[1.5px] border-[#B8860B] bg-transparent active:bg-[#B8860B]/10",
+  ghost: "bg-transparent active:bg-[#DCDCDC]/40",
   link: "bg-transparent",
-  adminPrimary: "bg-[#6B8E23] active:bg-[#5a7a1d]",
-  adminSecondary: "border-[1.5px] border-[#6B8E23] bg-transparent active:bg-[#F2E8CF]",
-  adminEdit: "bg-[#A67C52] active:bg-[#8f6844]",
-  adminView: "bg-[#F2E8CF] active:bg-[#e8d7b6]",
-  adminDanger: "bg-[#B42318] active:bg-[#912018]",
-  adminNeutral: "bg-[#5F5F5F] active:bg-[#4f4f4f]",
+  adminPrimary: "bg-[#B8860B] active:bg-[#9A6F09]",
+  adminSecondary: "border-[1.5px] border-[#B8860B] bg-transparent active:bg-[#B8860B]/10",
+  adminEdit: "bg-[#B87333] active:bg-[#9A5E28]",
+  adminView: "bg-[#F5F2EC] border border-[#DCDCDC] active:bg-[#DCDCDC]/50",
+  adminDanger: "bg-[#DC2626] active:bg-[#B91C1C]",
+  adminNeutral: "bg-[#1C1C1C] active:bg-[#333333]",
 };
 
 const variantTextClasses: Record<ButtonVariant, string> = {
-  default: "text-white font-semibold",
-  destructive: "text-white font-semibold",
-  outline: "text-[#5F5F5F] font-medium",
-  secondary: "text-white font-semibold",
-  ghost: "text-[#5F5F5F] font-medium",
-  link: "text-[#6B8E23] underline font-medium",
-  adminPrimary: "text-white font-semibold",
-  adminSecondary: "text-[#6B8E23] font-semibold",
-  adminEdit: "text-white font-semibold",
-  adminView: "text-[#5F5F5F] font-medium",
-  adminDanger: "text-white font-semibold",
-  adminNeutral: "text-white font-semibold",
+  default: "text-white font-inter-medium",
+  destructive: "text-white font-inter-medium",
+  outline: "text-[#B8860B] font-inter-medium",
+  secondary: "text-[#B8860B] font-inter-medium",
+  ghost: "text-[#1C1C1C] font-inter-medium",
+  link: "text-[#B8860B] underline font-inter-medium",
+  adminPrimary: "text-white font-inter-medium",
+  adminSecondary: "text-[#B8860B] font-inter-medium",
+  adminEdit: "text-white font-inter-medium",
+  adminView: "text-[#1C1C1C] font-inter-medium",
+  adminDanger: "text-white font-inter-medium",
+  adminNeutral: "text-white font-inter-medium",
 };
 
 const sizeContainerClasses: Record<ButtonSize, string> = {
-  default: "min-h-[40px] px-4 py-2.5 rounded-xl",
-  sm: "min-h-[34px] px-3 py-1.5 rounded-lg",
-  lg: "min-h-[48px] px-6 py-3 rounded-xl",
-  icon: "h-10 w-10 rounded-xl p-0",
-  admin: "min-h-[44px] rounded-xl px-4 py-3",
-  adminCompact: "min-h-[36px] rounded-lg px-3 py-1.5",
+  default: "min-h-[48px] px-4 py-3 rounded-xl",
+  sm: "min-h-[44px] px-3.5 py-2 rounded-xl",
+  lg: "min-h-[52px] px-6 py-3.5 rounded-xl",
+  icon: "h-12 w-12 rounded-xl p-0",
+  admin: "min-h-[48px] rounded-xl px-4 py-3",
+  adminCompact: "min-h-[44px] rounded-xl px-3.5 py-2",
 };
 
 const sizeTextClasses: Record<ButtonSize, string> = {
-  default: "text-sm",
-  sm: "text-xs",
+  default: "text-base",
+  sm: "text-sm",
   lg: "text-base",
   icon: "text-sm",
   admin: "text-sm",
@@ -123,6 +125,14 @@ export function Button({
     }
   };
 
+  const usesOchreSpinner =
+    variant === "outline" ||
+    variant === "secondary" ||
+    variant === "ghost" ||
+    variant === "link" ||
+    variant === "adminSecondary" ||
+    variant === "adminView";
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -134,14 +144,7 @@ export function Button({
       {isLoading ? (
         <ActivityIndicator
           size="small"
-          color={
-            variant === "outline" ||
-            variant === "ghost" ||
-            variant === "adminSecondary" ||
-            variant === "adminView"
-              ? "#6B8E23"
-              : "#FFFFFF"
-          }
+          color={usesOchreSpinner ? "#B8860B" : "#FFFFFF"}
         />
       ) : null}
       {typeof children === "string" || typeof children === "number" ? (
